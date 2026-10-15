@@ -153,10 +153,24 @@ export function typeDocument(
   ];
 }
 
-// 본문 XML → .hwpx(압축 파일) 바이트
-export async function buildHwpx(body: string[]): Promise<Uint8Array> {
+// 사진처럼 잘 줄어들지 않는 가짜 그림 데이터 (같은 입력이면 같은 결과)
+function fakeImageBytes(size: number, seed: number): Uint8Array {
+  const bytes = new Uint8Array(size);
+  let state = seed || 1;
+  for (let i = 0; i < size; i++) {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    bytes[i] = (state >> 16) & 0xff;
+  }
+  return bytes;
+}
+
+// 본문 XML → .hwpx(압축 파일) 바이트. mediaBytes를 주면 사진처럼 큰 그림 파일도 함께 넣는다.
+export async function buildHwpx(body: string[], mediaBytes = 0, seed = 1): Promise<Uint8Array> {
   const zip = new JSZip();
   zip.file("mimetype", "application/hwp+zip");
+  if (mediaBytes > 0) {
+    zip.file("BinData/image1.jpg", fakeImageBytes(mediaBytes, seed), { compression: "STORE" });
+  }
   zip.file(
     "Contents/section0.xml",
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -173,6 +187,8 @@ export interface SampleFile {
   category: Category;
   count: number;
   body: string[];
+  // 사진처럼 들어갈 그림 데이터 크기(바이트). 0이면 그림 없음.
+  mediaBytes: number;
 }
 
 const CATEGORY_NUMBER: Record<Category, number> = {
@@ -210,8 +226,72 @@ export function sampleFiles(): SampleFile[] {
         category,
         count,
         body,
+        mediaBytes: 0,
       });
     });
   }
   return files;
+}
+
+// ── 100개짜리 큰 묶음 ──────────────────────────────────────────────
+
+// 엑셀 예시표의 부처에 더해, 100개를 채우려고 덧붙이는 부처 (부처 이름은 실제지만 숫자는 모두 지어낸 것)
+const EXTRA_MINISTRIES = [
+  "교육부", "과학기술정보통신부", "외교부", "법무부", "국방부", "문화체육관광부",
+  "농림축산식품부", "보건복지부", "고용노동부", "국가보훈부", "경찰청", "소방청",
+  "관세청", "통계청", "질병관리청", "농촌진흥청", "방위사업청",
+];
+
+// 정해진 값이 같게 나오는 간단한 난수 (시험과 만든 파일이 항상 같도록)
+function pseudoRandom(seed: number) {
+  let state = seed;
+  return (max: number) => {
+    state = (state * 1103515245 + 12345) & 0x7fffffff;
+    return 1 + ((state >> 8) % max); // 1 ~ max
+  };
+}
+
+// 엑셀 예시표의 19개에, 덧붙인 부처 81개를 더해 정확히 100개를 만든다.
+// - 덧붙인 부처 16곳은 다섯 구분 문서를 모두, 마지막 1곳은 신규지정 문서만 만든다. (16×5 + 1 = 81)
+// - media가 true면 신규지정·지정취소·규격추가 문서에 사진처럼 큰 그림 데이터를 넣는다.
+export function largeSampleFiles(options: { media: boolean } = { media: true }): SampleFile[] {
+  const files = sampleFiles();
+  const rand = pseudoRandom(20261015);
+  const categories = Object.keys(CATEGORY_NUMBER) as Category[];
+
+  EXTRA_MINISTRIES.forEach((name, index) => {
+    const partial = index === EXTRA_MINISTRIES.length - 1;
+    for (const category of partial ? (["신규지정"] as Category[]) : categories) {
+      const count = category === "신규지정" ? rand(12) : rand(6);
+      let body: string[];
+      let title: string;
+      if (category === "1차연장" || category === "2차연장") {
+        const round = category === "1차연장" ? 1 : 2;
+        body = extensionDocument(name, round, count, rand(3) - 1);
+        title = `'26년도 지정 ${round}차 연장 검토 결과`;
+      } else {
+        body = typeDocument(name, category, count);
+        title = category === "신규지정" ? "'26년도 혁신제품 지정(안)(유형1)" : `'26년도 혁신제품 ${category}(안)`;
+      }
+      files.push({
+        fileName: `${CATEGORY_NUMBER[category]}-1. (${name}) ${title}.hwpx`,
+        ministry: name,
+        category,
+        count,
+        body,
+        mediaBytes:
+          options.media && (category === "신규지정" || category === "지정취소" || category === "규격추가")
+            ? 400 * 1024 + rand(400) * 1024 // 약 0.4~0.8MB (사진 한 장 정도)
+            : 0,
+      });
+    }
+  });
+  return files;
+}
+
+// 문서 묶음에서 기대하는 구분별 계
+export function totalsOf(files: SampleFile[]): Record<Category, number> {
+  const totals: Record<Category, number> = { 신규지정: 0, "1차연장": 0, "2차연장": 0, 지정취소: 0, 규격추가: 0 };
+  for (const file of files) totals[file.category] += file.count;
+  return totals;
 }

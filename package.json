@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "check": "tsx scripts/check-file.ts",
-    "samples": "tsx scripts/make-samples.ts"
+    "samples": "tsx scripts/make-samples.ts",
+    "samples:100": "tsx scripts/make-samples.ts --large"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

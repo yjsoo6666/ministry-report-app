@@ -1,24 +1,35 @@
 // 예시 한글(.hwpx) 파일을 폴더에 만든다. (사진 속 문서 양식을 흉내 낸 가짜 파일)
 //
-// 사용법: npm run samples [출력 폴더]      (기본: samples/예시)
+// 사용법:
+//   npm run samples                    엑셀 예시표를 재현하는 19개 → samples/예시
+//   npm run samples:100                100개(사진 데이터 포함, 합계 수십 MB) → samples/예시100
+//   npm run samples -- <폴더> [--large]  폴더와 종류를 직접 고르기
 // - 만든 파일은 앱에 올려서 쓰거나, `npm run check -- <폴더>`로 읽기를 확인할 수 있다.
 // - samples/ 폴더는 GitHub에 올라가지 않는다.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { buildHwpx, sampleFiles, SAMPLE_TOTALS } from "./sampleDocs";
+import { buildHwpx, largeSampleFiles, sampleFiles, SAMPLE_TOTALS, totalsOf } from "./sampleDocs";
 
 async function main() {
-  const outDir = process.argv[2] ?? join("samples", "예시");
+  const args = process.argv.slice(2);
+  const large = args.includes("--large");
+  const outDir = args.find((a) => !a.startsWith("--")) ?? join("samples", large ? "예시100" : "예시");
   mkdirSync(outDir, { recursive: true });
 
-  const files = sampleFiles();
-  for (const file of files) {
-    writeFileSync(join(outDir, file.fileName), await buildHwpx(file.body));
+  const files = large ? largeSampleFiles() : sampleFiles();
+  let bytes = 0;
+  for (const [index, file] of files.entries()) {
+    const data = await buildHwpx(file.body, file.mediaBytes, index + 1);
+    bytes += data.byteLength;
+    writeFileSync(join(outDir, file.fileName), data);
   }
 
-  console.log(`예시 한글 파일 ${files.length}개를 만들었어요 → ${outDir}`);
-  console.log("엑셀 예시표의 계(앱이 이렇게 만들어야 맞아요):", JSON.stringify(SAMPLE_TOTALS));
+  console.log(`예시 한글 파일 ${files.length}개(합계 ${(bytes / 1024 / 1024).toFixed(1)}MB)를 만들었어요 → ${outDir}`);
+  console.log(
+    "앱이 이렇게 만들어야 맞는 구분별 계:",
+    JSON.stringify(large ? totalsOf(files) : SAMPLE_TOTALS),
+  );
   console.log(`확인하려면: npm run check -- "${outDir}"`);
 }
 
