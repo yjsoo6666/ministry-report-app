@@ -1,5 +1,5 @@
-// Design Ref: §5.2 비교표 — 이번 분기 표와 지난 분기 기준표를 칸마다 비교해 증감(+2, -1)을 만든다.
-// Plan SC: 작업 15번. 새로 생긴 부처는 "신규", 이번에 파일이 없는 지난 분기 부처는 행을 남긴다.
+// Design Ref: §5.2 비교표 — 이번 차수 표와 지난 차수 기준표를 칸마다 비교해 증감(+2, -1)을 만든다.
+// Plan SC: 작업 15번. 새로 생긴 부처는 "신규", 이번에 파일이 없는 지난 차수 부처는 행을 남긴다.
 
 import {
   CATEGORIES,
@@ -12,7 +12,7 @@ import {
 // 비교표의 한 칸.
 // - empty: 이번에도 지난번에도 건수가 없음
 // - check: 어느 한쪽이 "확인 필요"라 증감을 계산할 수 없음
-// - value: 이번 분기 숫자와 지난 분기 대비 증감 (diff가 null이면 비교할 지난 분기 부처가 없음)
+// - value: 이번 차수 숫자와 지난 차수 대비 증감 (diff가 null이면 비교할 지난 차수 부처가 없음)
 export type ComparisonCell =
   | { kind: "empty" }
   | { kind: "check" }
@@ -20,7 +20,7 @@ export type ComparisonCell =
 
 export interface ComparisonRow {
   ministry: string;
-  // 같은 부처, 이번에 새로 생긴 부처(new), 지난 분기에는 있었지만 이번에 파일이 없는 부처(missing)
+  // 같은 부처, 이번에 새로 생긴 부처(new), 지난 차수에는 있었지만 이번에 파일이 없는 부처(missing)
   status: "same" | "new" | "missing";
   cells: Record<Category, ComparisonCell>;
 }
@@ -32,7 +32,7 @@ export interface ComparisonTable {
 
 const numberOf = (cell: Cell | undefined): number => (cell?.kind === "number" ? cell.value : 0);
 
-// 지난 분기 부처가 같은 이름으로 여러 번 나오면 하나로 합친다. (숫자는 더하고, 확인 필요가 있으면 확인 필요)
+// 지난 차수 부처가 같은 이름으로 여러 번 나오면 하나로 합친다. (숫자는 더하고, 확인 필요가 있으면 확인 필요)
 function mergePrevious(previous: PreviousReport): Map<string, Record<Category, Cell>> {
   const merged = new Map<string, Record<Category, Cell>>();
   for (const row of previous.rows) {
@@ -77,7 +77,7 @@ function sumTotals(rows: { cells: Record<Category, Cell> }[]): Record<Category, 
   return totals;
 }
 
-// 이번 분기 표(담당자가 고친 값 포함)와 지난 분기 기준표를 비교한다.
+// 이번 차수 표(담당자가 고친 값 포함)와 지난 차수 기준표를 비교한다.
 export function compareTables(current: Table, previous: PreviousReport): ComparisonTable {
   const previousByMinistry = mergePrevious(previous);
   const rows: ComparisonRow[] = [];
@@ -93,7 +93,7 @@ export function compareTables(current: Table, previous: PreviousReport): Compari
     rows.push({ ministry: row.ministry, status: prev ? "same" : "new", cells });
   }
 
-  // 지난 분기에는 있었지만 이번에 파일이 없는 부처는 행을 남긴다.
+  // 지난 차수에는 있었지만 이번에 파일이 없는 부처는 행을 남긴다.
   const currentNames = new Set(current.rows.map((r) => r.ministry));
   for (const [ministry, prev] of previousByMinistry) {
     if (currentNames.has(ministry)) continue;
@@ -104,7 +104,7 @@ export function compareTables(current: Table, previous: PreviousReport): Compari
     rows.push({ ministry, status: "missing", cells });
   }
 
-  // 계 줄: 이번 분기 계와, 지난 분기 기준표를 다시 더한 계를 비교한다.
+  // 계 줄: 이번 차수 계와, 지난 차수 기준표를 다시 더한 계를 비교한다.
   const previousTotals = sumTotals([...previousByMinistry.values()].map((cells) => ({ cells })));
   const totals = {} as Record<Category, ComparisonCell>;
   for (const category of CATEGORIES) {
@@ -125,8 +125,9 @@ export function formatComparisonCell(cell: ComparisonCell): string {
 }
 
 // 비교표의 부처 이름 칸 글자. 새로 생긴 부처와 이번에 파일이 없는 부처는 표시를 붙인다.
-export function comparisonRowLabel(row: ComparisonRow): string {
+// currentLabel은 이번 차수 이름(예: "4차")이다.
+export function comparisonRowLabel(row: ComparisonRow, currentLabel = "이번 차수"): string {
   if (row.status === "new") return `${row.ministry} (신규)`;
-  if (row.status === "missing") return `${row.ministry} (이번 분기 없음)`;
+  if (row.status === "missing") return `${row.ministry} (${currentLabel} 없음)`;
   return row.ministry;
 }

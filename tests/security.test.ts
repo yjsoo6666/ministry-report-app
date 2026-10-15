@@ -119,7 +119,7 @@ describe("부처 이름에 엑셀 수식이 끼어들지 못한다", () => {
     expect(result.ministry).toBe("해수부");
   });
 
-  it("지난 분기 엑셀의 부처 이름이 수식 모양이면 그 표를 쓰지 않는다", async () => {
+  it("지난 차수 엑셀의 부처 이름이 수식 모양이면 그 표를 쓰지 않는다", async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Sheet1");
     ["신규 지정", "1차 연장", "2차 연장", "지정취소", "규격추가"].forEach((label, i) => {

@@ -15,6 +15,7 @@ import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/limits";
 import { parseFile, tooLargeResult } from "@/lib/parse/parseFile";
 import { buildTable } from "@/lib/table/buildTable";
 import { applyEdit } from "@/lib/table/editTable";
+import { roundLabels } from "@/lib/table/roundLabels";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -71,6 +72,9 @@ export default function Home() {
   const [edits, setEdits] = useState<Edit[]>([]);
   const [previous, setPrevious] = useState<{ name: string; report: PreviousReport } | null>(null);
   const [previousError, setPreviousError] = useState("");
+  // 이번 조달심 차수(예: "4"). 화면과 엑셀 이름에 4차/3차로 쓴다. (저장하지 않는다)
+  const [round, setRound] = useState("");
+  const labels = roundLabels(round);
 
   // 읽은 결과(올린 파일 + 켜져 있다면 예시)로 표를 만들고, 담당자가 고친 값을 그 위에 차례로 덧씌운다.
   const parsed = useMemo(
@@ -174,7 +178,7 @@ export default function Home() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
-  // 지난 분기 기준표를 읽는다. 엑셀 도구는 용량이 커서 이때 처음 불러온다.
+  // 지난 차수 기준표를 읽는다. 엑셀 도구는 용량이 커서 이때 처음 불러온다.
   async function selectPrevious(file: File) {
     setPreviousError("");
     if (!/\.xlsx$/i.test(file.name)) {
@@ -196,7 +200,7 @@ export default function Home() {
       setPreviousError(
         error instanceof Error && error.message
           ? error.message
-          : "지난 분기 기준표를 읽지 못했어요.",
+          : `${labels.previous} 기준표를 읽지 못했어요.`,
       );
     }
   }
@@ -221,6 +225,9 @@ export default function Home() {
             previous ? { name: previous.name, ministryCount: previous.report.rows.length } : null
           }
           error={previousError}
+          round={round}
+          labels={labels}
+          onRoundChange={setRound}
           onSelect={selectPrevious}
           onClear={() => {
             setPrevious(null);
@@ -262,6 +269,7 @@ export default function Home() {
             <DownloadButtons
               table={table}
               previous={previous?.report ?? null}
+              labels={labels}
               hasProblems={hasProblems}
             />
           </>

@@ -50,7 +50,7 @@ export interface TableRow {
   edited: Partial<Record<Category, boolean>>;
 }
 
-// 지난 분기 기준표 엑셀에서 읽은 내용 (비교표를 만들 때 쓴다).
+// 지난 차수 기준표 엑셀에서 읽은 내용 (비교표를 만들 때 쓴다).
 export interface PreviousReport {
   rows: { ministry: string; cells: Record<Category, Cell> }[];
 }

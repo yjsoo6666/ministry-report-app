@@ -1,7 +1,7 @@
-// 사진 속 예시 기준표(계 89·33·48·4·3)를 엑셀 파일로 만든다. "지난 분기 표"로 올려서 비교표를 시험할 때 쓴다.
+// 사진 속 예시 기준표(계 89·33·48·4·3)를 엑셀 파일로 만든다. "3차 표"로 올려서 비교표를 시험할 때 쓴다.
 // 사진처럼 A열·1행을 비우고 B2부터 시작하는 모양이다.
 //
-// 사용법: npx tsx scripts/make-previous-report.ts   → samples/지난분기_기준표.xlsx
+// 사용법: npx tsx scripts/make-previous-report.ts   → samples/3차_기준표.xlsx
 
 import ExcelJS from "exceljs";
 import { mkdirSync } from "node:fs";
@@ -59,8 +59,8 @@ async function main() {
   });
 
   mkdirSync("samples", { recursive: true });
-  await workbook.xlsx.writeFile("samples/지난분기_기준표.xlsx");
-  console.log("만들었어요 → samples/지난분기_기준표.xlsx, 계:", totals.join("·"));
+  await workbook.xlsx.writeFile("samples/3차_기준표.xlsx");
+  console.log("만들었어요 → samples/3차_기준표.xlsx, 계:", totals.join("·"));
 }
 
 main().catch((error) => {

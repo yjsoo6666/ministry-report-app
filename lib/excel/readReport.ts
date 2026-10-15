@@ -1,4 +1,4 @@
-// Design Ref: §5.2 비교표 — 지난 분기 기준표 엑셀에서 부처별·구분별 숫자를 읽는다.
+// Design Ref: §5.2 비교표 — 지난 차수 기준표 엑셀에서 부처별·구분별 숫자를 읽는다.
 // Plan SC: 작업 14번. 정해진 칸 번호에 기대지 않고, 5개 구분 제목이 있는 줄을 찾아 표의 위치를 알아낸다.
 // (예시 기준표처럼 왼쪽·위에 빈 칸이 있어도 읽는다.)
 
@@ -44,7 +44,7 @@ function toCell(cell: ExcelJS.Cell): Cell {
   return { kind: "check" };
 }
 
-// 지난 분기 기준표 엑셀(바이트)을 읽어 부처별 숫자를 돌려준다.
+// 지난 차수 기준표 엑셀(바이트)을 읽어 부처별 숫자를 돌려준다.
 export async function readReport(data: ArrayBuffer | Uint8Array): Promise<PreviousReport> {
   if (data.byteLength > MAX_UPLOAD_BYTES) {
     throw new ReportReadError(`파일이 너무 커요. ${MAX_UPLOAD_MB}MB 이하만 올릴 수 있어요.`);
@@ -114,7 +114,7 @@ export async function readReport(data: ArrayBuffer | Uint8Array): Promise<Previo
     const ministry = toShortMinistryName(name);
     if (!isSafeMinistryName(ministry)) {
       throw new ReportReadError(
-        "지난 분기 표의 부처 이름에 쓸 수 없는 글자(=, +, @ 등)가 있어요. 이 앱이 만든 기준표인지 확인해 주세요.",
+        "지난 차수 표의 부처 이름에 쓸 수 없는 글자(=, +, @ 등)가 있어요. 이 앱이 만든 기준표인지 확인해 주세요.",
       );
     }
     rows.push({ ministry, cells });

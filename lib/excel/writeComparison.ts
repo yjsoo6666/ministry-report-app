@@ -1,4 +1,4 @@
-// Design Ref: §5.2 비교표 — 기준표와 같은 표에 지난 분기 대비 증감을 덧붙인 엑셀을 만든다.
+// Design Ref: §5.2 비교표 — 기준표와 같은 표에 지난 차수 대비 증감을 덧붙인 엑셀을 만든다.
 // Plan SC: 작업 15번. 기준표 파일에는 비교 내용을 넣지 않고, 이 파일을 따로 만든다.
 
 import ExcelJS from "exceljs";
@@ -21,7 +21,10 @@ function writeCell(cell: ExcelJS.Cell, value: ComparisonCell, bold = false, fill
   });
 }
 
-export async function writeComparison(comparison: ComparisonTable): Promise<Uint8Array> {
+export async function writeComparison(
+  comparison: ComparisonTable,
+  currentLabel = "이번 차수",
+): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("비교표");
 
@@ -36,7 +39,7 @@ export async function writeComparison(comparison: ComparisonTable): Promise<Uint
   comparison.rows.forEach((row, r) => {
     const excelRow = sheet.getRow(r + 2);
     const nameCell = excelRow.getCell(1);
-    nameCell.value = comparisonRowLabel(row);
+    nameCell.value = comparisonRowLabel(row, currentLabel);
     styleCell(nameCell, { bold: true });
     CATEGORIES.forEach((category, i) => {
       writeCell(excelRow.getCell(i + 2), row.cells[category]);
@@ -51,7 +54,7 @@ export async function writeComparison(comparison: ComparisonTable): Promise<Uint
     writeCell(totalRow.getCell(i + 2), comparison.totals[category], true, TOTAL_FILL);
   });
 
-  // 부처 이름에 "(이번 분기 없음)" 같은 표시가 붙을 수 있어 첫 열을 조금 더 넓게 둔다.
+  // 부처 이름에 "(4차 없음)" 같은 표시가 붙을 수 있어 첫 열을 조금 더 넓게 둔다.
   setColumnWidths(sheet, CATEGORIES.length, 22);
 
   const buffer = await workbook.xlsx.writeBuffer();

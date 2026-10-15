@@ -35,7 +35,7 @@ function prevRow(ministry: string, cells: Partial<Record<Category, Cell>>) {
 }
 
 describe("compareTables", () => {
-  it("같은 부처는 이번 숫자와 지난 분기 대비 증감을 계산한다", () => {
+  it("같은 부처는 이번 숫자와 지난 차수 대비 증감을 계산한다", () => {
     const current = buildTable([file("1", "조달청", "신규지정", num(80))]).table;
     const previous: PreviousReport = { rows: [prevRow("조달청", { 신규지정: num(78) })] };
     const result = compareTables(current, previous);
@@ -80,14 +80,14 @@ describe("compareTables", () => {
     expect(comparisonRowLabel(result.rows[0])).toBe("해수부 (신규)");
   });
 
-  it("지난 분기에는 있었지만 이번에 파일이 없는 부처도 행을 남긴다", () => {
+  it("지난 차수에는 있었지만 이번에 파일이 없는 부처도 행을 남긴다", () => {
     const current = buildTable([file("1", "해수부", "신규지정", num(1))]).table;
     const previous: PreviousReport = { rows: [prevRow("산림청", { "1차연장": num(1) })] };
     const result = compareTables(current, previous);
     expect(result.rows.map((r) => r.ministry)).toEqual(["해수부", "산림청"]);
     expect(result.rows[1].status).toBe("missing");
     expect(result.rows[1].cells["1차연장"]).toEqual({ kind: "value", current: 0, diff: -1 });
-    expect(comparisonRowLabel(result.rows[1])).toBe("산림청 (이번 분기 없음)");
+    expect(comparisonRowLabel(result.rows[1])).toBe("산림청 (이번 차수 없음)");
   });
 
   it("확인 필요가 한쪽에 있으면 그 칸의 증감은 확인 필요다", () => {
@@ -100,7 +100,7 @@ describe("compareTables", () => {
     expect(compareTables(current2, previous2).rows[0].cells.신규지정).toEqual({ kind: "check" });
   });
 
-  it("계 줄은 이번 계와 지난 분기 계(다시 더한 값)를 비교한다", () => {
+  it("계 줄은 이번 계와 지난 차수 계(다시 더한 값)를 비교한다", () => {
     const current = buildTable([
       file("1", "조달청", "신규지정", num(80)),
       file("2", "해수부", "신규지정", num(1)),
@@ -113,7 +113,7 @@ describe("compareTables", () => {
     expect(totals.지정취소).toEqual({ kind: "value", current: 0, diff: 0 });
   });
 
-  it("지난 분기에 같은 부처가 두 번 나오면 하나로 합쳐 비교한다", () => {
+  it("지난 차수에 같은 부처가 두 번 나오면 하나로 합쳐 비교한다", () => {
     const current = buildTable([file("1", "조달청", "신규지정", num(10))]).table;
     const previous: PreviousReport = {
       rows: [prevRow("조달청", { 신규지정: num(4) }), prevRow("조달청", { 신규지정: num(3) })],
@@ -156,7 +156,7 @@ describe("writeComparison", () => {
     expect(sheet.getRow(2).getCell(4).value).toBe("19 (0)");
     expect(sheet.getRow(3).getCell(1).value).toBe("해수부 (신규)");
     expect(sheet.getRow(3).getCell(2).value).toBe("1");
-    expect(sheet.getRow(4).getCell(1).value).toBe("산림청 (이번 분기 없음)");
+    expect(sheet.getRow(4).getCell(1).value).toBe("산림청 (이번 차수 없음)");
     expect(sheet.getRow(4).getCell(2).value).toBe("0 (-2)");
     expect(sheet.getRow(5).getCell(1).value).toBe("계");
     expect(sheet.getRow(5).getCell(2).value).toBe("81 (+1)");
