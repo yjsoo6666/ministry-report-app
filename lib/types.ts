@@ -12,6 +12,15 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 
+// 화면과 엑셀 머리글에 쓰는 이름 (예시 기준표와 같은 표기)
+export const CATEGORY_LABELS: Record<Category, string> = {
+  신규지정: "신규 지정",
+  "1차연장": "1차 연장",
+  "2차연장": "2차 연장",
+  지정취소: "지정취소",
+  규격추가: "규격추가",
+};
+
 // 표의 한 칸 값.
 // - empty : 건수 없음 (해당 구분 파일이 없거나 문서에 "-")
 // - number: 문서에서 읽은 숫자
