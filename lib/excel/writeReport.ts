@@ -3,31 +3,9 @@
 
 import ExcelJS from "exceljs";
 import { CATEGORIES, CATEGORY_LABELS, type Cell, type Table } from "../types";
+import { CHECK_TEXT, HEADER_FILL, TOTAL_FILL, setColumnWidths, styleCell } from "./styles";
 
-export const CHECK_TEXT = "확인 필요";
-
-const FONT_NAME = "맑은 고딕";
-const HEADER_FILL = "FFE6B8E6"; // 예시 기준표 머리글의 연보라
-const TOTAL_FILL = "FFC6E0B4"; // 예시 기준표 "계" 행의 연두
-const THIN = { style: "thin" as const, color: { argb: "FF000000" } };
-const BORDER = { top: THIN, left: THIN, bottom: THIN, right: THIN };
-
-function styleCell(
-  cell: ExcelJS.Cell,
-  options: { bold?: boolean; fill?: string; color?: string } = {},
-) {
-  cell.font = {
-    name: FONT_NAME,
-    size: 11,
-    bold: options.bold ?? false,
-    color: options.color ? { argb: options.color } : undefined,
-  };
-  cell.alignment = { horizontal: "center", vertical: "middle" };
-  cell.border = BORDER;
-  if (options.fill) {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: options.fill } };
-  }
-}
+export { CHECK_TEXT };
 
 // 칸 값을 엑셀 칸에 쓴다. 빈칸은 비워 두고, "확인 필요"는 글자로 쓴다.
 function writeCell(cell: ExcelJS.Cell, value: Cell, bold = false, fill?: string) {
@@ -76,10 +54,7 @@ export async function writeReport(table: Table): Promise<Uint8Array> {
     writeCell(totalRow.getCell(i + 2), table.totals[category], true, TOTAL_FILL);
   });
 
-  sheet.getColumn(1).width = 16;
-  for (let i = 2; i <= CATEGORIES.length + 1; i++) {
-    sheet.getColumn(i).width = 12;
-  }
+  setColumnWidths(sheet, CATEGORIES.length);
 
   const buffer = await workbook.xlsx.writeBuffer();
   return new Uint8Array(buffer as ArrayBuffer);
