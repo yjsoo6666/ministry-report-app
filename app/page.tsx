@@ -24,6 +24,9 @@ import {
   type PreviousReport,
 } from "@/lib/types";
 
+// 한 번에 동시에 읽을 파일 수
+const MAX_PARALLEL_READS = 4;
+
 interface Edit {
   ministry: string;
   category: Category;
@@ -129,17 +132,40 @@ export default function Home() {
     }));
     setEntries((prev) => [...prev, ...added]);
 
-    files.forEach(async (file, index) => {
-      const id = added[index].id;
-      // 보안: 너무 큰 파일은 메모리에 올리기 전에 크기만 보고 거절한다.
-      const results =
-        file.size > MAX_UPLOAD_BYTES
-          ? tooLargeResult(file.name)
-          : await parseFile(file.name, await file.arrayBuffer());
-      setEntries((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status: "done", results } : e)),
-      );
-    });
+    // 파일이 많아도(예: 100개) 한 번에 4개씩만 읽어서, 큰 파일이 많을 때 메모리가 한꺼번에 몰리지 않게 한다.
+    let next = 0;
+    const readNext = async () => {
+      while (next < files.length) {
+        const index = next++;
+        const file = files[index];
+        const id = added[index].id;
+        let results: ParsedFile[];
+        try {
+          // 보안: 너무 큰 파일은 메모리에 올리기 전에 크기만 보고 거절한다.
+          results =
+            file.size > MAX_UPLOAD_BYTES
+              ? tooLargeResult(file.name)
+              : await parseFile(file.name, await file.arrayBuffer());
+        } catch {
+          // 파일을 읽는 도중 문제가 생겨도 "읽는 중"으로 남지 않게 이유와 함께 마무리한다.
+          results = [
+            {
+              fileName: file.name,
+              ministry: null,
+              category: null,
+              count: { kind: "empty" },
+              problem: "파일을 읽지 못했어요. 다시 올려 주세요.",
+            },
+          ];
+        }
+        setEntries((prev) =>
+          prev.map((e) => (e.id === id ? { ...e, status: "done", results } : e)),
+        );
+      }
+    };
+    void Promise.all(
+      Array.from({ length: Math.min(MAX_PARALLEL_READS, files.length) }, readNext),
+    );
   }
 
   function removeFile(id: number) {
