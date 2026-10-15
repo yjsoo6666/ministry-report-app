@@ -9,6 +9,7 @@ import DownloadButtons from "./_components/DownloadButtons";
 import FileDropzone, { type UploadItem } from "./_components/FileDropzone";
 import IssueList from "./_components/IssueList";
 import PreviewTable from "./_components/PreviewTable";
+import PreviousReportInput from "./_components/PreviousReportInput";
 import Summary from "./_components/Summary";
 import { parseFile } from "@/lib/parse/parseFile";
 import { buildTable } from "@/lib/table/buildTable";
@@ -19,6 +20,7 @@ import {
   type Category,
   type Cell,
   type ParsedFile,
+  type PreviousReport,
 } from "@/lib/types";
 
 interface Edit {
@@ -63,6 +65,8 @@ export default function Home() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [exampleOn, setExampleOn] = useState(false);
   const [edits, setEdits] = useState<Edit[]>([]);
+  const [previous, setPrevious] = useState<{ name: string; report: PreviousReport } | null>(null);
+  const [previousError, setPreviousError] = useState("");
 
   // 읽은 결과(올린 파일 + 켜져 있다면 예시)로 표를 만들고, 담당자가 고친 값을 그 위에 차례로 덧씌운다.
   const parsed = useMemo(
@@ -137,6 +141,23 @@ export default function Home() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
+  // 지난 분기 기준표를 읽는다. 엑셀 도구는 용량이 커서 이때 처음 불러온다.
+  async function selectPrevious(file: File) {
+    setPreviousError("");
+    try {
+      const { readReport } = await import("@/lib/excel/readReport");
+      const report = await readReport(await file.arrayBuffer());
+      setPrevious({ name: file.name, report });
+    } catch (error) {
+      setPrevious(null);
+      setPreviousError(
+        error instanceof Error && error.message
+          ? error.message
+          : "지난 분기 기준표를 읽지 못했어요.",
+      );
+    }
+  }
+
   function toggleExample() {
     if (!confirmReset()) return;
     setEdits([]);
@@ -151,6 +172,18 @@ export default function Home() {
         <h1 className="text-4xl font-bold tracking-tight">부처별 기준표 자동 취합 앱</h1>
 
         <FileDropzone items={items} onAdd={addFiles} onRemove={removeFile} />
+
+        <PreviousReportInput
+          loaded={
+            previous ? { name: previous.name, ministryCount: previous.report.rows.length } : null
+          }
+          error={previousError}
+          onSelect={selectPrevious}
+          onClear={() => {
+            setPrevious(null);
+            setPreviousError("");
+          }}
+        />
 
         <section aria-label="예시 데이터" className="flex flex-wrap items-center gap-3">
           <button
@@ -180,7 +213,11 @@ export default function Home() {
               }
             />
             <IssueList excluded={result.excluded} issues={openIssues} />
-            <DownloadButtons table={table} hasProblems={hasProblems} />
+            <DownloadButtons
+              table={table}
+              previous={previous?.report ?? null}
+              hasProblems={hasProblems}
+            />
           </>
         )}
       </main>
