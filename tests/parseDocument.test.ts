@@ -61,9 +61,28 @@ describe("parseDocument: 2차 연장 문서", () => {
     expect(result.problem).toContain("찾지 못했어요");
   });
 
-  it("숫자 자리에 알 수 없는 글자가 있으면 확인 필요로 읽는다", () => {
-    const [result] = parseDocument("연장.hwpx", secondExtension("2", "약1"));
-    expect(result.count).toEqual({ kind: "check" });
+  it.each([
+    ["약1", 1],
+    ["약 1", 1],
+    ["총 3", 3],
+    ["약12", 12],
+  ])("숫자 앞에 '약', '총' 같은 한글이 붙어 있어도 그 숫자로 읽는다: %s", (text, expected) => {
+    const [result] = parseDocument("연장.hwpx", secondExtension("2", text));
+    expect(result.count).toEqual(num(expected));
+    expect(result.problem).toBeUndefined();
+  });
+
+  it.each(["1~2", "1/2", "여러", "?", "1 2"])(
+    "숫자 하나로 정할 수 없는 글자(%s)는 확인 필요로 읽는다",
+    (text) => {
+      const [result] = parseDocument("연장.hwpx", secondExtension("2", text));
+      expect(result.count).toEqual({ kind: "check" });
+    },
+  );
+
+  it("신규지정에서도 숫자 앞의 '약'을 넘겨서 읽는다", () => {
+    const [result] = parseDocument("신규.hwpx", ["해양수산부", "유형 | 〈신규지정〉 약 2개"]);
+    expect(result.count).toEqual(num(2));
   });
 
   it("제목에 1차 연장이 적혀 있으면 1차연장으로 읽는다", () => {

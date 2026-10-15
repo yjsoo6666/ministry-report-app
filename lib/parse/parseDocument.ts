@@ -6,18 +6,23 @@ import type { Category, Cell, ParsedFile } from "../types";
 import { isSafeMinistryName, toShortMinistryName } from "./ministryNames";
 
 // 숫자 자리: 숫자 → 읽은 숫자, "-" 또는 비어 있음 → 없음, 그 밖의 글자 → 읽지 못함
+// - 숫자 앞에 "약", "총" 같은 짧은 한글이 붙어 있어도(약1, 약 1, 총 3) 그 숫자로 읽는다.
+// - "1~2", "1/2", "여러"처럼 숫자 하나로 정할 수 없는 것만 읽지 못함("확인 필요")으로 둔다.
 const DASH = /^[-–—−]$/;
 
 function toCell(raw: string | undefined): Cell {
-  if (raw === undefined || raw.trim() === "") return { kind: "empty" };
-  const trimmed = raw.trim();
-  if (/^\d+$/.test(trimmed)) return { kind: "number", value: Number(trimmed) };
-  if (DASH.test(trimmed)) return { kind: "empty" };
+  // 공백은 한 칸으로만 줄인다. (숫자 사이의 공백까지 지우면 "1 2"가 12로 합쳐져 틀린 숫자가 된다)
+  const text = (raw ?? "").trim().replace(/\s+/g, " ");
+  if (text === "") return { kind: "empty" };
+  if (/^\d{1,9}$/.test(text)) return { kind: "number", value: Number(text) };
+  if (DASH.test(text)) return { kind: "empty" };
+  const withPrefix = text.match(/^[가-힣]{1,2} ?(\d{1,9})$/);
+  if (withPrefix) return { kind: "number", value: Number(withPrefix[1]) };
   return { kind: "check" };
 }
 
-// "N개" 앞 숫자 자리에 올 수 있는 글자 (숫자, 대시, 그 밖의 한 글자 덩어리)
-const COUNT = String.raw`([^\s()（）]{0,4})?`;
+// "N개" 앞 숫자 자리에 올 수 있는 글자 (숫자, 대시, 앞에 붙은 짧은 한글 등. 괄호는 제외)
+const COUNT = String.raw`([^()（）\n]{0,6}?)`;
 
 // ① 부처명: 문서 맨 위 제목에서 읽는다.
 //   - "[해양수산부]혁신제품 지정 2차 연장 검토" → 대괄호 안
