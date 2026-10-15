@@ -17,9 +17,9 @@ export default function IssueList({ excluded, issues }: Props) {
         확인이 필요한 파일
       </h2>
       <ul className="flex flex-col gap-2">
-        {excluded.map((file) => (
+        {excluded.map((file, index) => (
           <li
-            key={file.fileName}
+            key={`${file.fileName}-${index}`}
             className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
           >
             <p className="font-medium">{file.fileName}</p>

@@ -1,18 +1,25 @@
 "use client";
 
 // Design Ref: §4 화면 구성 — 한 페이지에서 올리기 → 요약 → 미리보기·수정 → 확인 목록 → 내려받기.
-// Plan SC: 작업 8~11번의 화면. 한글 파일 읽기(작업 3~5번)는 아직 없어서, 예시 데이터로 화면을 미리 볼 수 있다.
+// Plan SC: 작업 8~11번의 화면. 올린 .hwpx 파일은 브라우저 안에서 읽어 표에 넣는다.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { EXAMPLE_FILES } from "./_components/exampleData";
 import DownloadButtons from "./_components/DownloadButtons";
-import FileDropzone from "./_components/FileDropzone";
+import FileDropzone, { type UploadItem } from "./_components/FileDropzone";
 import IssueList from "./_components/IssueList";
 import PreviewTable from "./_components/PreviewTable";
 import Summary from "./_components/Summary";
+import { parseFile } from "@/lib/parse/parseFile";
 import { buildTable } from "@/lib/table/buildTable";
 import { applyEdit } from "@/lib/table/editTable";
-import { CATEGORIES, type Category, type Cell, type ParsedFile } from "@/lib/types";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  type Category,
+  type Cell,
+  type ParsedFile,
+} from "@/lib/types";
 
 interface Edit {
   ministry: string;
@@ -20,12 +27,51 @@ interface Edit {
   cell: Cell;
 }
 
+// 올린 파일 하나와 그 파일에서 읽은 결과
+interface Entry {
+  id: number;
+  name: string;
+  status: "reading" | "done";
+  results: ParsedFile[];
+}
+
+function countText(cell: Cell): string {
+  if (cell.kind === "number") return `${cell.value}건`;
+  if (cell.kind === "check") return "확인 필요";
+  return "건수 없음";
+}
+
+// 파일 하나를 읽은 결과를 한 줄로 요약한다.
+function summarize(results: ParsedFile[]): { summary: string; hasProblem: boolean } {
+  const parts = results.map((r) => {
+    const who = r.ministry ?? "부처명 모름";
+    const what = r.category ? CATEGORY_LABELS[r.category] : "구분 모름";
+    return r.category ? `${who} · ${what}: ${countText(r.count)}` : `${who} · ${what}`;
+  });
+  const problems = results.map((r) => r.problem).filter((p): p is string => Boolean(p));
+  const hasProblem = results.some(
+    (r) => r.ministry === null || r.category === null || r.count.kind === "check" || r.problem,
+  );
+  return {
+    summary: [...parts, ...problems].join(" — "),
+    hasProblem,
+  };
+}
+
 export default function Home() {
-  const [uploaded, setUploaded] = useState<File[]>([]);
-  const [parsed, setParsed] = useState<ParsedFile[]>([]);
+  const nextId = useRef(1);
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [exampleOn, setExampleOn] = useState(false);
   const [edits, setEdits] = useState<Edit[]>([]);
 
-  // 읽은 결과로 표를 만들고, 담당자가 고친 값을 그 위에 차례로 덧씌운다.
+  // 읽은 결과(올린 파일 + 켜져 있다면 예시)로 표를 만들고, 담당자가 고친 값을 그 위에 차례로 덧씌운다.
+  const parsed = useMemo(
+    () => [
+      ...(exampleOn ? EXAMPLE_FILES : []),
+      ...entries.filter((e) => e.status === "done").flatMap((e) => e.results),
+    ],
+    [entries, exampleOn],
+  );
   const result = useMemo(() => buildTable(parsed), [parsed]);
   const table = useMemo(
     () =>
@@ -49,6 +95,14 @@ export default function Home() {
   const problemFileCount = result.excluded.length + openIssues.length;
   const hasProblems = checkCellCount > 0 || problemFileCount > 0;
 
+  const items: UploadItem[] = entries.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    status: entry.status,
+    ...(entry.status === "done" ? summarize(entry.results) : { summary: "", hasProblem: false }),
+  }));
+
+  // 표를 다시 만들면 고친 값이 사라지므로, 고친 값이 있으면 먼저 물어본다.
   function confirmReset(): boolean {
     return (
       edits.length === 0 ||
@@ -56,55 +110,65 @@ export default function Home() {
     );
   }
 
-  function loadExample() {
+  function addFiles(files: File[]) {
     if (!confirmReset()) return;
-    setParsed(EXAMPLE_FILES);
     setEdits([]);
+
+    const added: Entry[] = files.map((file) => ({
+      id: nextId.current++,
+      name: file.name,
+      status: "reading",
+      results: [],
+    }));
+    setEntries((prev) => [...prev, ...added]);
+
+    files.forEach(async (file, index) => {
+      const id = added[index].id;
+      const results = await parseFile(file.name, await file.arrayBuffer());
+      setEntries((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: "done", results } : e)),
+      );
+    });
   }
 
-  function clearExample() {
+  function removeFile(id: number) {
     if (!confirmReset()) return;
-    setParsed([]);
     setEdits([]);
+    setEntries((prev) => prev.filter((e) => e.id !== id));
   }
+
+  function toggleExample() {
+    if (!confirmReset()) return;
+    setEdits([]);
+    setExampleOn((on) => !on);
+  }
+
+  const hasData = parsed.length > 0;
 
   return (
     <div className="flex flex-1 justify-center bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-50">
       <main className="flex w-full max-w-4xl flex-col gap-8 bg-white px-6 py-12 dark:bg-zinc-950 sm:px-12">
         <h1 className="text-4xl font-bold tracking-tight">부처별 기준표 자동 취합 앱</h1>
 
-        <FileDropzone
-          files={uploaded}
-          onAdd={(added) => setUploaded((prev) => [...prev, ...added])}
-          onRemove={(index) => setUploaded((prev) => prev.filter((_, i) => i !== index))}
-        />
+        <FileDropzone items={items} onAdd={addFiles} onRemove={removeFile} />
 
         <section aria-label="예시 데이터" className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={loadExample}
+            onClick={toggleExample}
             className="rounded-full border border-zinc-400 px-4 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
-            예시 데이터로 화면 미리 보기
+            {exampleOn ? "예시 지우기" : "예시 데이터로 화면 미리 보기"}
           </button>
-          {parsed.length > 0 && (
-            <button
-              type="button"
-              onClick={clearExample}
-              className="rounded-full border border-zinc-400 px-4 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              예시 지우기
-            </button>
-          )}
           <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            파일 읽기가 아직 없어서, 실제 자료가 아닌 가짜 숫자로 화면을 보여줘요.
+            파일이 없을 때 화면을 보는 용도예요. 예시는 실제 자료가 아닌 가짜 숫자예요.
           </span>
         </section>
 
-        {parsed.length > 0 && (
+        {hasData && (
           <>
             <Summary
-              fileCount={parsed.length}
+              fileCount={entries.length + (exampleOn ? EXAMPLE_FILES.length : 0)}
               ministryCount={table.rows.length}
               checkCellCount={checkCellCount}
               problemFileCount={problemFileCount}

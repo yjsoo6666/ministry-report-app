@@ -1,19 +1,29 @@
 "use client";
 
-// Design Ref: §4 ② 파일 올리기 — 끌어다 놓거나 버튼으로 한글 파일 여러 개를 고른다.
-// Plan SC: 작업 8번. (파일 읽기는 아직 없다. 올린 파일 목록과 빼기까지만 한다.)
+// Design Ref: §4 ② 파일 올리기 — 끌어다 놓거나 버튼으로 한글 파일 여러 개를 고르고, 파일마다 읽은 결과를 보여준다.
+// Plan SC: 작업 8번. 올린 파일 목록, 읽는 중/읽은 결과 표시, 빼기.
 
 import { useRef, useState } from "react";
 
+export interface UploadItem {
+  id: number;
+  name: string;
+  status: "reading" | "done";
+  // 읽은 결과를 한 줄로 요약한 글 (예: "해수부 · 2차 연장: 1")
+  summary: string;
+  // 읽지 못했거나 확인이 필요한 파일이면 true
+  hasProblem: boolean;
+}
+
 interface Props {
-  files: File[];
+  items: UploadItem[];
   onAdd: (added: File[]) => void;
-  onRemove: (index: number) => void;
+  onRemove: (id: number) => void;
 }
 
 const ACCEPTED = /\.(hwpx|hwp)$/i;
 
-export default function FileDropzone({ files, onAdd, onRemove }: Props) {
+export default function FileDropzone({ items, onAdd, onRemove }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState("");
@@ -76,6 +86,9 @@ export default function FileDropzone({ files, onAdd, onRemove }: Props) {
             e.target.value = "";
           }}
         />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          파일은 이 컴퓨터의 브라우저 안에서만 읽고, 어디로도 보내지 않아요.
+        </p>
       </div>
 
       {notice && (
@@ -84,32 +97,36 @@ export default function FileDropzone({ files, onAdd, onRemove }: Props) {
         </p>
       )}
 
-      {files.length > 0 && (
+      {items.length > 0 && (
         <div className="mt-4">
-          <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
-            올린 파일 {files.length}개
-          </p>
+          <p className="mb-2 text-sm text-zinc-600 dark:text-zinc-400">올린 파일 {items.length}개</p>
           <ul className="flex flex-col gap-1">
-            {files.map((file, index) => (
+            {items.map((item) => (
               <li
-                key={`${file.name}-${file.size}-${index}`}
-                className="flex items-center justify-between gap-3 rounded border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-800"
+                key={item.id}
+                className={`flex items-center justify-between gap-3 rounded border px-3 py-1.5 text-sm ${
+                  item.hasProblem
+                    ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                    : "border-zinc-200 dark:border-zinc-800"
+                }`}
               >
-                <span className="truncate">{file.name}</span>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{item.name}</span>
+                  <span className="block truncate text-zinc-600 dark:text-zinc-400">
+                    {item.status === "reading" ? "읽는 중…" : item.summary}
+                  </span>
+                </span>
                 <button
                   type="button"
-                  onClick={() => onRemove(index)}
+                  onClick={() => onRemove(item.id)}
                   className="shrink-0 text-zinc-500 hover:text-red-600"
-                  aria-label={`${file.name} 빼기`}
+                  aria-label={`${item.name} 빼기`}
                 >
                   빼기
                 </button>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-            파일에서 건수를 읽는 기능은 아직 만들고 있어요. 지금은 올린 파일 목록만 보여요.
-          </p>
         </div>
       )}
     </section>
