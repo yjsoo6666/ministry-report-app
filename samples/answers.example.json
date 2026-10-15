@@ -1,0 +1,32 @@
+{
+  "_설명": "이 파일은 양식을 보여주는 가짜 예시입니다(숫자·파일 이름 모두 가짜). 복사해서 answers.json으로 이름을 바꾸고 실제 값을 적으세요. answers.json은 GitHub에 올라가지 않습니다.",
+  "files": [
+    {
+      "fileName": "예시_신규지정.hwpx",
+      "ministry": "예시부",
+      "category": "신규지정",
+      "count": 3
+    },
+    {
+      "fileName": "예시_2차연장.hwpx",
+      "ministry": "예시부",
+      "category": "2차연장",
+      "count": 1,
+      "memo": "접수는 2건이지만 연장된(인정된) 건수는 1건"
+    },
+    {
+      "fileName": "예시_1차연장.hwpx",
+      "ministry": "가짜청",
+      "category": "1차연장",
+      "count": null,
+      "memo": "문서에 '-'로 적혀 있어 빈칸이 정답"
+    }
+  ],
+  "expectedTotals": {
+    "신규지정": 3,
+    "1차연장": 0,
+    "2차연장": 1,
+    "지정취소": 0,
+    "규격추가": 0
+  }
+}

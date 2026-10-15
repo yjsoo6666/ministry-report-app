@@ -37,6 +37,11 @@ yarn-error.log*
 /trash-can/
 /.bkit/
 
+# 부처 샘플 파일과 실제 정답표는 내부용이라 올리지 않는다 (안내문과 가짜 예시만 올린다)
+/samples/*
+!/samples/README.md
+!/samples/answers.example.json
+
 # vercel
 .vercel
 
