@@ -1,0 +1,10 @@
+# Vercel CLI로 배포할 때 이 파일/폴더는 Vercel로 올리지 않는다.
+# (.gitignore는 Vercel CLI가 보지 않으므로, 비밀 값 파일이 같이 올라가지 않게 여기에도 적는다.)
+.env
+.env.*
+.env*
+trash-can/
+samples/
+.bkit/
+.git/
+node_modules/

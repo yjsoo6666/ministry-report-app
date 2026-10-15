@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "부처별 기준표 자동 취합 앱",
   description: "부처가 보낸 한글 파일의 구분별 건수를 모아 엑셀 기준표를 만들어 주는 앱",
+  // 내부 업무용 앱이라 검색 사이트에 노출하지 않는다.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
