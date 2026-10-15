@@ -18,8 +18,9 @@
 npm run dev     # 개발 서버 (http://localhost:3000)
 npm run build   # 배포용 빌드 (오류 확인용)
 npm run lint    # 코드 검사 (ESLint)
+npm test        # 시험 (Vitest, tests 폴더) — 숫자 계산이 맞는지 자동 확인
 ```
-테스트 도구는 아직 설치하지 않았다.
+시험 도구(Vitest)는 정확도 100% 확인에 필요해서 설치했다. 시험 파일은 `tests/`에 `*.test.ts`로 만든다.
 
 ## 폴더 구조
 - `app/` : 화면과 서버 코드. `page.tsx`(첫 화면), `layout.tsx`(공통 틀), `globals.css`
@@ -91,7 +92,7 @@ npm run lint    # 코드 검사 (ESLint)
 작업할 때마다 아래 순서를 반복한다.
 
 1. **변경한다.**
-2. **`npm run lint`와 `npm run build`를 실행**해 오류가 없는지 확인한다.
+2. **`npm run lint`, `npm test`, `npm run build`를 실행**해 오류가 없는지 확인한다.
 3. **화면이 바뀐 작업이면 `npm run dev`로 띄워** 실제로 보이는지 확인한다.
 4. **문제가 있으면 고치고 다시 1번으로** 돌아간다.
 5. **통과하면 git 커밋으로 그 상태를 남긴다.** 커밋 메시지는 한국어로, 무엇을 왜 바꿨는지 한 줄로 적는다. 검증을 통과하지 못한 상태는 커밋하지 않는다.
