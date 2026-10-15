@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 부처별 기준표 자동 취합 앱
 
-## Getting Started
+부처들이 보낸 한글(hwpx) 파일을 올리면 부처별·구분별 건수를 읽어 **엑셀 기준표**를 만들어 주는 앱이에요.
+지난 분기 기준표를 함께 올리면 증감이 들어간 **비교표**도 만들어요.
 
-First, run the development server:
+- 한글 파일은 **이 컴퓨터의 브라우저 안에서만** 읽어요. 서버나 외부 서비스로 보내지 않고, 저장도 하지 않아요.
+- 기획과 규칙은 [PRD.md](PRD.md), 만들 순서는 [PLAN.md](PLAN.md), 구조는 [DESIGN.md](DESIGN.md)에 있어요.
+- 작업 규칙은 [CLAUDE.md](CLAUDE.md)에 있어요.
+
+## 실행하기
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install     # 처음 한 번만
+npm run dev     # 개발 서버 → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| 명령 | 하는 일 |
+|------|---------|
+| `npm run dev` | 개발 서버를 켜요 |
+| `npm run build` | 배포용으로 빌드해서 오류를 확인해요 |
+| `npm run lint` | 코드 검사 |
+| `npm test` | 숫자 계산·파일 읽기가 맞는지 자동 시험 |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 쓰는 방법
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. 부처가 보낸 한글 파일(`.hwpx`)을 올려요. 파일마다 읽은 결과가 바로 보여요.
+2. 미리보기 표를 확인해요. 칸을 누르면 숫자를 고칠 수 있고, 고치면 "계"가 다시 계산돼요.
+3. 아래 "확인이 필요한 파일" 목록에 뜬 것이 있는지 봐요.
+4. **기준표 엑셀 내려받기**를 눌러요.
+5. (선택) 지난 분기 기준표를 올렸다면 **비교표 엑셀 내려받기**도 할 수 있어요.
 
-## Learn More
+파일이 없을 때는 "예시 데이터로 화면 미리 보기" 버튼으로 화면을 볼 수 있어요. (가짜 숫자예요.)
 
-To learn more about Next.js, take a look at the following resources:
+## 폴더 안내
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| 위치 | 내용 |
+|------|------|
+| `app/` | 화면 (`page.tsx`, `_components/`) |
+| `lib/reader/` | 한글 파일에서 글자 꺼내기 |
+| `lib/parse/` | 부처명·구분·건수 읽기, 부처 줄임말 |
+| `lib/table/` | 표 합치기, "계" 계산, 칸 수정, 비교표 계산 |
+| `lib/excel/` | 엑셀 만들기·읽기 |
+| `tests/` | 자동 시험 |
+| `samples/` | 샘플 한글 파일과 정답표 (내부용이라 GitHub에 올라가지 않아요) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 아직 안 된 것
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 구형 `.hwp` 파일 읽기: 지금은 한글에서 `.hwpx`로 다시 저장해서 올려야 해요.
+- 지정취소 문서 읽기: 문서 양식을 확인한 뒤에 만들 수 있어요.
+- 실제 부처 파일로 숫자가 100% 맞는지 확인하는 일
