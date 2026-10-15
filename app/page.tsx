@@ -118,6 +118,8 @@ export default function Home() {
   function addFiles(files: File[]) {
     if (!confirmReset()) return;
     setEdits([]);
+    // 실제 파일을 올리면 가짜 예시 데이터는 자동으로 지운다. (예시 부처가 실제 표에 섞이지 않게)
+    setExampleOn(false);
 
     const added: Entry[] = files.map((file) => ({
       id: nextId.current++,
@@ -200,18 +202,21 @@ export default function Home() {
           }}
         />
 
-        <section aria-label="예시 데이터" className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleExample}
-            className="rounded-full border border-zinc-400 px-4 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
-          >
-            {exampleOn ? "예시 지우기" : "예시 데이터로 화면 미리 보기"}
-          </button>
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            파일이 없을 때 화면을 보는 용도예요. 예시는 실제 자료가 아닌 가짜 숫자예요.
-          </span>
-        </section>
+        {/* 실제 파일이 올라와 있는 동안에는 예시 버튼을 숨겨서, 가짜 예시가 실제 표에 섞이지 않게 한다. */}
+        {entries.length === 0 && (
+          <section aria-label="예시 데이터" className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleExample}
+              className="rounded-full border border-zinc-400 px-4 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              {exampleOn ? "예시 지우기" : "예시 데이터로 화면 미리 보기"}
+            </button>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">
+              파일이 없을 때 화면을 보는 용도예요. 예시는 실제 자료가 아닌 가짜 숫자예요.
+            </span>
+          </section>
+        )}
 
         {hasData && (
           <>
