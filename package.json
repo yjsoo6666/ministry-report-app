@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "check": "tsx scripts/check-file.ts"
+    "check": "tsx scripts/check-file.ts",
+    "samples": "tsx scripts/make-samples.ts"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

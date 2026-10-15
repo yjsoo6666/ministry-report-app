@@ -21,8 +21,9 @@ function toCell(raw: string | undefined): Cell {
   return { kind: "check" };
 }
 
-// "N개" 앞 숫자 자리에 올 수 있는 글자 (숫자, 대시, 앞에 붙은 짧은 한글 등. 괄호는 제외)
-const COUNT = String.raw`([^()（）\n]{0,6}?)`;
+// "N개" 앞 숫자 자리에 올 수 있는 글자: 앞에 붙은 짧은 한글(1~2자, 예: 약·총) + 숫자·대시·기호(한글 제외, 괄호 제외)
+// - 한글 낱말("혁신제품〉" 같은 앞뒤 문구)은 숫자 자리로 받아들이지 않는다.
+const COUNT = String.raw`((?:[가-힣]{1,2})?\s?[^()（）\n가-힣]{0,6}?)`;
 // 건수 뒤에 붙는 단위. "1개"와 "1건"을 모두 같은 건수로 읽는다.
 const UNIT = "[개건]";
 
@@ -102,14 +103,26 @@ function readCancellation(lines: string[]): { count: Cell; missing: boolean } | 
   return titleMentions ? { count: { kind: "empty" }, missing: true } : null;
 }
 
-// ④ 규격추가: 신규지정 문서 안의 "규격추가 혁신제품 N개" 문구에서 읽는다.
+// ④ 규격추가: "규격추가 혁신제품 N개"(신규지정 문서 안) 또는 "〈규격추가〉 N개"(규격추가 문서)에서 읽는다.
+// - 숫자가 비어 있는 문구(사진 속 신규지정 문서의 "규격추가 혁신제품 개")는 건수가 없다는 뜻이라 결과에 넣지 않는다.
+//   (같은 부처의 별도 규격추가 문서와 겹쳐서 "중복 파일"로 잘못 표시되지 않게)
+// - 숫자가 있는 문구가 여러 줄이면 먼저 나온 것을 쓴다.
 function readSpecAddition(lines: string[]): Cell | null {
-  const pattern = new RegExp(String.raw`규격\s*추가\s*혁신제품[^\d가-힣\n]{0,3}\s*${COUNT}\s*${UNIT}`);
+  const patterns = [
+    new RegExp(String.raw`규격\s*추가\s*혁신제품[^\d가-힣\n]{0,3}\s*${COUNT}\s*${UNIT}`),
+    new RegExp(String.raw`규격\s*추가[^\d가-힣\n]{0,6}\s*${COUNT}\s*${UNIT}`),
+  ];
+  let found: Cell | null = null;
   for (const line of lines) {
-    const m = line.match(pattern);
-    if (m) return toCell(m[1]);
+    for (const pattern of patterns) {
+      const m = line.match(pattern);
+      if (!m) continue;
+      const cell = toCell(m[1]);
+      if (cell.kind !== "empty") return cell;
+      found = found ?? cell;
+    }
   }
-  return null;
+  return found;
 }
 
 // 문서 하나를 읽어 결과를 돌려준다. 한 문서에서 구분이 여러 개 나오면(예: 신규지정 + 규격추가) 여러 개를 돌려준다.
@@ -136,13 +149,9 @@ export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
     const designation = readNewDesignation(lines);
     if (designation) {
       results.push({ fileName, ministry, category: "신규지정", count: designation });
-    }
-    const spec = readSpecAddition(lines);
-    if (spec) {
-      results.push({ fileName, ministry, category: "규격추가", count: spec });
-    }
-    // 연장·신규지정 문서가 아니면 지정취소 문서인지 확인한다.
-    if (results.length === 0) {
+    } else {
+      // 신규지정 문서가 아니면 지정취소 문서인지 확인한다.
+      // (지정취소·규격추가 문서가 신규지정 문서와 같은 양식이어도 읽을 수 있게, 규격추가보다 먼저 본다.)
       const cancellation = readCancellation(lines);
       if (cancellation) {
         results.push({
@@ -155,6 +164,11 @@ export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
             : undefined,
         });
       }
+    }
+    // 규격추가는 건수가 실제로 적혀 있을 때만 결과에 넣는다.
+    const spec = readSpecAddition(lines);
+    if (spec && spec.kind !== "empty") {
+      results.push({ fileName, ministry, category: "규격추가", count: spec });
     }
   }
 

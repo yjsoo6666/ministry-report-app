@@ -121,13 +121,22 @@ describe("parseDocument: 신규지정 문서", () => {
     expect(parseDocument("신규.hwpx", lines)[0].count).toEqual(num(80));
   });
 
-  it("규격추가 문구에 숫자가 비어 있으면 규격추가는 빈칸이다 (사진 속 문서)", () => {
+  it("규격추가 문구에 숫자가 비어 있으면 규격추가 결과를 만들지 않는다 (사진 속 문서)", () => {
+    // 건수가 없다는 뜻이라 빈칸으로 남는다. (같은 부처의 별도 규격추가 문서와 겹쳐 중복으로 보이지 않게)
     const results = parseDocument(
       "신규.hwpx",
       newDesignation(["〈기존 FT 및 유형 | 규격추가 혁신제품〉 개 (※제품수 기준)"]),
     );
-    expect(results.map((r) => r.category)).toEqual(["신규지정", "규격추가"]);
-    expect(results[1].count).toEqual(EMPTY);
+    expect(results.map((r) => r.category)).toEqual(["신규지정"]);
+    expect(results[0].count).toEqual(num(1));
+  });
+
+  it("규격추가 혁신제품 문구가 '-개'여도 규격추가 결과를 만들지 않는다", () => {
+    const results = parseDocument(
+      "신규.hwpx",
+      newDesignation(["〈기존 FT 및 유형 | 규격추가 혁신제품〉 -개"]),
+    );
+    expect(results.map((r) => r.category)).toEqual(["신규지정"]);
   });
 
   it("규격추가 문구에 숫자가 있으면 같은 문서에서 규격추가도 읽는다", () => {
