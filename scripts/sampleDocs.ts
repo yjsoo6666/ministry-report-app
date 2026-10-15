@@ -233,14 +233,7 @@ export function sampleFiles(): SampleFile[] {
   return files;
 }
 
-// ── 100개짜리 큰 묶음 ──────────────────────────────────────────────
-
-// 엑셀 예시표의 부처에 더해, 100개를 채우려고 덧붙이는 부처 (부처 이름은 실제지만 숫자는 모두 지어낸 것)
-const EXTRA_MINISTRIES = [
-  "교육부", "과학기술정보통신부", "외교부", "법무부", "국방부", "문화체육관광부",
-  "농림축산식품부", "보건복지부", "고용노동부", "국가보훈부", "경찰청", "소방청",
-  "관세청", "통계청", "질병관리청", "농촌진흥청", "방위사업청",
-];
+// ── 50개짜리 묶음 (엑셀 예시표의 부처 10곳 × 다섯 구분, 칸마다 문서 하나) ──────────
 
 // 정해진 값이 같게 나오는 간단한 난수 (시험과 만든 파일이 항상 같도록)
 function pseudoRandom(seed: number) {
@@ -251,31 +244,31 @@ function pseudoRandom(seed: number) {
   };
 }
 
-// 엑셀 예시표의 19개에, 덧붙인 부처 81개를 더해 정확히 100개를 만든다.
-// - 덧붙인 부처 16곳은 다섯 구분 문서를 모두, 마지막 1곳은 신규지정 문서만 만든다. (16×5 + 1 = 81)
+// 엑셀 예시표의 부처 10곳 × 다섯 구분 = 50칸을 모두 채우는 문서 50개를 만든다. (칸마다 문서 하나라 겹치는 칸이 없다)
+// - 숫자는 지어낸 값(구분마다 적당히 섞음)이고, 같은 입력이면 항상 같은 값이 나온다.
 // - media가 true면 신규지정·지정취소·규격추가 문서에 사진처럼 큰 그림 데이터를 넣는다.
-export function largeSampleFiles(options: { media: boolean } = { media: true }): SampleFile[] {
-  const files = sampleFiles();
+export function fullSampleFiles(options: { media: boolean } = { media: true }): SampleFile[] {
+  const files: SampleFile[] = [];
   const rand = pseudoRandom(20261015);
   const categories = Object.keys(CATEGORY_NUMBER) as Category[];
 
-  EXTRA_MINISTRIES.forEach((name, index) => {
-    const partial = index === EXTRA_MINISTRIES.length - 1;
-    for (const category of partial ? (["신규지정"] as Category[]) : categories) {
-      const count = category === "신규지정" ? rand(12) : rand(6);
+  for (const { short, full } of SAMPLE_MINISTRIES) {
+    for (const category of categories) {
+      const count = category === "신규지정" ? rand(14) : rand(7);
       let body: string[];
       let title: string;
       if (category === "1차연장" || category === "2차연장") {
         const round = category === "1차연장" ? 1 : 2;
-        body = extensionDocument(name, round, count, rand(3) - 1);
+        // 접수는 인정보다 많거나 같게(미인정 0~2개) 만들어, 접수를 세면 틀리는 문서가 섞이게 한다.
+        body = extensionDocument(full, round, count, rand(3) - 1);
         title = `'26년도 지정 ${round}차 연장 검토 결과`;
       } else {
-        body = typeDocument(name, category, count);
+        body = typeDocument(full, category, count);
         title = category === "신규지정" ? "'26년도 혁신제품 지정(안)(유형1)" : `'26년도 혁신제품 ${category}(안)`;
       }
       files.push({
-        fileName: `${CATEGORY_NUMBER[category]}-1. (${name}) ${title}.hwpx`,
-        ministry: name,
+        fileName: `${CATEGORY_NUMBER[category]}-1. (${full}) ${title}.hwpx`,
+        ministry: short,
         category,
         count,
         body,
@@ -285,7 +278,7 @@ export function largeSampleFiles(options: { media: boolean } = { media: true }):
             : 0,
       });
     }
-  });
+  }
   return files;
 }
 

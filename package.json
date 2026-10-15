@@ -10,7 +10,7 @@
     "test": "vitest run",
     "check": "tsx scripts/check-file.ts",
     "samples": "tsx scripts/make-samples.ts",
-    "samples:100": "tsx scripts/make-samples.ts --large"
+    "samples:50": "tsx scripts/make-samples.ts --full"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
