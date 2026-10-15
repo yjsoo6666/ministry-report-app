@@ -43,6 +43,14 @@ npm run dev     # 개발 서버 → http://localhost:3000
 | `tests/` | 자동 시험 |
 | `samples/` | 샘플 한글 파일과 정답표 (내부용이라 GitHub에 올라가지 않아요) |
 
+## 인터넷에 공개하기 전에 (보안)
+
+- 이 앱은 내부용 자료를 다루므로 **공개 주소에 접근 제한을 거는 것**을 권해요. Vercel 프로젝트 설정의 *Deployment Protection*(Vercel 로그인 또는 비밀번호)을 켜 주세요. 코드로는 대신 못 해요.
+- Vercel CLI로 배포할 때는 `.gitignore`가 적용되지 않아서 `.vercelignore`로 `.env`, `samples/`, `trash-can/`, `.bkit/`를 막아 뒀어요. 이 파일을 지우지 마세요.
+- 한 번이라도 `.env`가 들어 있는 채로 배포했다면 그 안의 토큰 4개를 새로 발급해 교체하세요.
+- 배포하기 전에 "예시 데이터" 버튼(`app/_components/exampleData.ts`)을 지울지 정하세요. 숫자는 모두 가짜예요.
+- `npm audit`에 뜨는 취약점은 개발용 도구(린트) 쪽이거나 이 앱이 쓰지 않는 기능이라 앱 사용자에게는 위험이 없어요. `npm audit fix --force`는 큰 버전 변경을 일으킬 수 있으니 실행하지 마세요.
+
 ## 아직 안 된 것
 
 - 구형 `.hwp` 파일 읽기: 지금은 한글에서 `.hwpx`로 다시 저장해서 올려야 해요.
