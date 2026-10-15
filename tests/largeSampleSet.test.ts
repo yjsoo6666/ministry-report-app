@@ -2,21 +2,26 @@ import { describe, expect, it } from "vitest";
 import { parseFile } from "../lib/parse/parseFile";
 import { buildTable } from "../lib/table/buildTable";
 import { CATEGORIES, type ParsedFile } from "../lib/types";
-import { buildHwpx, fullSampleFiles, SAMPLE_MINISTRIES, totalsOf } from "../scripts/sampleDocs";
+import { buildHwpx, partialSampleFiles, SAMPLE_MINISTRIES, SKIPPED_CELLS, totalsOf } from "../scripts/sampleDocs";
 
-// 엑셀 예시표의 부처 10곳 × 다섯 구분 = 문서 50개를 한꺼번에 읽어도 정답과 같은 표가 나오는지 확인한다.
-// (실제 부처 파일이 아니라 지어낸 문서다)
+// 엑셀 예시표의 부처 10곳 × 다섯 구분 중 10칸을 뺀 문서 40개를 한꺼번에 읽어도 정답과 같은 표가 나오는지 확인한다.
+// 문서를 내지 않은 칸은 빈칸이어야 한다. (실제 부처 파일이 아니라 지어낸 문서다)
 
-describe("예시 한글 문서 50개 (10개 부처 × 다섯 구분)", () => {
-  const files = fullSampleFiles({ media: false });
+describe("예시 한글 문서 40개 (10개 부처 × 다섯 구분에서 10칸 제외)", () => {
+  const files = partialSampleFiles({ media: false });
 
-  it("정확히 50개이고, 부처·구분 조합이 겹치지 않는다", () => {
-    expect(files).toHaveLength(50);
-    expect(new Set(files.map((f) => f.fileName)).size).toBe(50);
-    expect(new Set(files.map((f) => `${f.ministry}|${f.category}`)).size).toBe(50);
-    // 엑셀 예시표에 있는 부처만 쓴다.
+  it("정확히 40개이고, 부처·구분 조합이 겹치지 않으며 뺀 칸의 문서는 없다", () => {
+    expect(SKIPPED_CELLS).toHaveLength(10);
+    expect(files).toHaveLength(40);
+    expect(new Set(files.map((f) => f.fileName)).size).toBe(40);
+    expect(new Set(files.map((f) => `${f.ministry}|${f.category}`)).size).toBe(40);
+    for (const cell of SKIPPED_CELLS) {
+      expect(files.some((f) => `${f.ministry}|${f.category}` === cell), cell).toBe(false);
+    }
+    // 엑셀 예시표에 있는 부처만 쓰고, 부처마다 문서가 하나 이상 있다.
     const allowed = new Set(SAMPLE_MINISTRIES.map((m) => m.short));
     expect(files.every((f) => allowed.has(f.ministry))).toBe(true);
+    for (const short of allowed) expect(files.some((f) => f.ministry === short), short).toBe(true);
   });
 
   it("구분마다 숫자가 적당히 섞여 있다 (모두 같은 값이 아니다)", () => {
@@ -26,7 +31,7 @@ describe("예시 한글 문서 50개 (10개 부처 × 다섯 구분)", () => {
     }
   });
 
-  it("50개를 모두 읽어 정답과 같은 표(부처 10곳, 빈칸 없음)가 나오고, 확인할 것이 없다", async () => {
+  it("40개를 모두 읽어 정답과 같은 표가 나오고, 뺀 칸은 빈칸이며, 확인할 것이 없다", async () => {
     const started = performance.now();
     const parsed: ParsedFile[] = [];
     for (const file of files) {
@@ -49,10 +54,11 @@ describe("예시 한글 문서 50개 (10개 부처 × 다섯 구분)", () => {
     for (const category of CATEGORIES) {
       expect(table.totals[category], category).toEqual({ kind: "number", value: expected[category] });
     }
-    // 모든 칸이 숫자로 채워진다. (칸마다 문서가 하나씩 있으므로)
+    // 문서가 있는 칸은 숫자, 문서를 내지 않은 칸은 빈칸이다.
     for (const row of table.rows) {
       for (const category of CATEGORIES) {
-        expect(row.cells[category].kind, `${row.ministry} ${category}`).toBe("number");
+        const skipped = SKIPPED_CELLS.includes(`${row.ministry}|${category}`);
+        expect(row.cells[category].kind, `${row.ministry} ${category}`).toBe(skipped ? "empty" : "number");
       }
     }
     expect(elapsed).toBeLessThan(15_000);

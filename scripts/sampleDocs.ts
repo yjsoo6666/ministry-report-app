@@ -244,10 +244,26 @@ function pseudoRandom(seed: number) {
   };
 }
 
-// 엑셀 예시표의 부처 10곳 × 다섯 구분 = 50칸을 모두 채우는 문서 50개를 만든다. (칸마다 문서 하나라 겹치는 칸이 없다)
-// - 숫자는 지어낸 값(구분마다 적당히 섞음)이고, 같은 입력이면 항상 같은 값이 나온다.
+// 문서를 내지 않은 칸 10곳 (부처|구분). 이 칸은 기준표에서 빈칸이 되어야 한다.
+// 규격추가는 없는 경우가 흔해서 6곳을 뺐다.
+export const SKIPPED_CELLS = [
+  "지재처|규격추가",
+  "산림청|규격추가",
+  "기상청|규격추가",
+  "행안부|규격추가",
+  "중기부|규격추가",
+  "해수부|규격추가",
+  "기후부|신규지정",
+  "해수부|신규지정",
+  "산업부|지정취소",
+  "지재처|지정취소",
+];
+
+// 엑셀 예시표의 부처 10곳 × 다섯 구분 = 50칸 중 SKIPPED_CELLS 10칸을 뺀 40칸의 문서 40개를 만든다.
+// (칸마다 문서 하나라 겹치는 칸이 없고, 뺀 10칸은 빈칸이 된다)
+// - 숫자는 지어낸 값(구분마다 적당히 섞음)이고, 같은 입력이면 항상 같은 값이 나온다. (뺀 칸도 난수를 써서 나머지 값은 그대로)
 // - media가 true면 신규지정·지정취소·규격추가 문서에 사진처럼 큰 그림 데이터를 넣는다.
-export function fullSampleFiles(options: { media: boolean } = { media: true }): SampleFile[] {
+export function partialSampleFiles(options: { media: boolean } = { media: true }): SampleFile[] {
   const files: SampleFile[] = [];
   const rand = pseudoRandom(20261015);
   const categories = Object.keys(CATEGORY_NUMBER) as Category[];
@@ -255,12 +271,15 @@ export function fullSampleFiles(options: { media: boolean } = { media: true }): 
   for (const { short, full } of SAMPLE_MINISTRIES) {
     for (const category of categories) {
       const count = category === "신규지정" ? rand(14) : rand(7);
+      const rejected = category === "1차연장" || category === "2차연장" ? rand(3) - 1 : 0;
+      const mediaExtra = rand(400);
+      if (SKIPPED_CELLS.includes(`${short}|${category}`)) continue;
       let body: string[];
       let title: string;
       if (category === "1차연장" || category === "2차연장") {
         const round = category === "1차연장" ? 1 : 2;
         // 접수는 인정보다 많거나 같게(미인정 0~2개) 만들어, 접수를 세면 틀리는 문서가 섞이게 한다.
-        body = extensionDocument(full, round, count, rand(3) - 1);
+        body = extensionDocument(full, round, count, rejected);
         title = `'26년도 지정 ${round}차 연장 검토 결과`;
       } else {
         body = typeDocument(full, category, count);
@@ -274,7 +293,7 @@ export function fullSampleFiles(options: { media: boolean } = { media: true }): 
         body,
         mediaBytes:
           options.media && (category === "신규지정" || category === "지정취소" || category === "규격추가")
-            ? 400 * 1024 + rand(400) * 1024 // 약 0.4~0.8MB (사진 한 장 정도)
+            ? 400 * 1024 + mediaExtra * 1024 // 약 0.4~0.8MB (사진 한 장 정도)
             : 0,
       });
     }
