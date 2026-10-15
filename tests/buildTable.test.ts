@@ -128,6 +128,19 @@ describe("buildTable", () => {
     expect(issues[1].message).toContain("해수부");
   });
 
+  it("건수 문구를 못 찾아 빈칸이 된 칸은 빈칸으로 두고 이유를 확인 목록에 남긴다", () => {
+    const missing: ParsedFile = {
+      ...file("c.hwpx", "행안부", "1차연장", EMPTY),
+      problem: "건수 문구를 찾지 못했어요.",
+    };
+    const plainEmpty = file("d.hwpx", "해수부", "1차연장", EMPTY);
+    const { table, issues } = buildTable([missing, plainEmpty]);
+    expect(table.rows[0].cells["1차연장"]).toEqual(EMPTY);
+    expect(table.totals["1차연장"]).toEqual(num(0));
+    expect(issues).toHaveLength(1);
+    expect(issues[0].fileNames).toEqual(["c.hwpx"]);
+  });
+
   it("부처명이나 구분을 못 읽은 파일은 표에 넣지 않고 제외 목록에 둔다", () => {
     const noMinistry = file("x.hwpx", null, "신규지정", num(5));
     const noCategory = file("y.hwpx", "해수부", null, num(5));

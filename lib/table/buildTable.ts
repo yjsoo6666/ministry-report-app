@@ -96,8 +96,9 @@ export function buildTable(files: ParsedFile[]): BuildResult {
     if (group.length === 1) {
       const only = group[0];
       row.cells[category] = only.count;
-      // 숫자를 읽지 못해 "확인 필요"가 된 칸은 이유를 확인 목록에도 남긴다.
-      if (only.count.kind === "check") {
+      // 숫자를 읽지 못해 "확인 필요"가 된 칸, 또는 건수 문구를 못 찾아 빈칸이 된 칸은
+      // 이유를 확인 목록에도 남긴다. (빈칸이라도 놓친 것이 없는지 담당자가 볼 수 있게)
+      if (only.count.kind === "check" || (only.count.kind === "empty" && only.problem)) {
         issues.push({
           fileNames: [only.fileName],
           message: only.problem ?? `${ministry}의 ${category} 칸의 숫자를 읽지 못했어요.`,
