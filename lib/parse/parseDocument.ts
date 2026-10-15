@@ -23,6 +23,8 @@ function toCell(raw: string | undefined): Cell {
 
 // "N개" 앞 숫자 자리에 올 수 있는 글자 (숫자, 대시, 앞에 붙은 짧은 한글 등. 괄호는 제외)
 const COUNT = String.raw`([^()（）\n]{0,6}?)`;
+// 건수 뒤에 붙는 단위. "1개"와 "1건"을 모두 같은 건수로 읽는다.
+const UNIT = "[개건]";
 
 // ① 부처명: 문서 맨 위 제목에서 읽는다.
 //   - "[해양수산부]혁신제품 지정 2차 연장 검토" → 대괄호 안
@@ -67,7 +69,7 @@ function readExtension(lines: string[]): { category: Category; count: Cell } | n
   if (!category) return null;
 
   // "미인정 대상 요약"은 제외하고 "인정 대상 요약"만 본다.
-  const approved = new RegExp(String.raw`(?<!미)인정\s*대상\s*요약\s*[(（]\s*${COUNT}\s*개`);
+  const approved = new RegExp(String.raw`(?<!미)인정\s*대상\s*요약\s*[(（]\s*${COUNT}\s*${UNIT}`);
   for (const line of lines) {
     const m = line.match(approved);
     if (m) return { category, count: toCell(m[1]) };
@@ -77,7 +79,7 @@ function readExtension(lines: string[]): { category: Category; count: Cell } | n
 
 // ③ 신규지정 문서: "〈신규지정〉 N개"에서 읽는다.
 function readNewDesignation(lines: string[]): Cell | null {
-  const pattern = new RegExp(String.raw`신규\s*지정[^\d가-힣\n]{0,6}\s*${COUNT}\s*개`);
+  const pattern = new RegExp(String.raw`신규\s*지정[^\d가-힣\n]{0,6}\s*${COUNT}\s*${UNIT}`);
   for (const line of lines) {
     const m = line.match(pattern);
     if (m) return toCell(m[1]);
@@ -85,9 +87,24 @@ function readNewDesignation(lines: string[]): Cell | null {
   return null;
 }
 
+// ③-2 지정취소 문서: "지정취소 N건"처럼 건수가 명시된 문구에서 그 숫자만 읽는다.
+// - 문서 맨 위(앞 2줄)에 "지정취소"가 있는데 건수 문구를 못 찾으면 빈칸으로 두고 이유를 남긴다(missing).
+// - 제목에 "지정취소"가 없고 건수 문구도 없으면 지정취소 문서로 보지 않는다(null).
+function readCancellation(lines: string[]): { count: Cell; missing: boolean } | null {
+  const pattern = new RegExp(
+    String.raw`지정\s*취소(?:\s*(?:대상|요약|현황|혁신제품))*[^\d가-힣\n]{0,6}\s*${COUNT}\s*${UNIT}`,
+  );
+  for (const line of lines) {
+    const m = line.match(pattern);
+    if (m) return { count: toCell(m[1]), missing: false };
+  }
+  const titleMentions = lines.slice(0, 2).some((line) => /지정\s*취소/.test(line));
+  return titleMentions ? { count: { kind: "empty" }, missing: true } : null;
+}
+
 // ④ 규격추가: 신규지정 문서 안의 "규격추가 혁신제품 N개" 문구에서 읽는다.
 function readSpecAddition(lines: string[]): Cell | null {
-  const pattern = new RegExp(String.raw`규격\s*추가\s*혁신제품[^\d가-힣\n]{0,3}\s*${COUNT}\s*개`);
+  const pattern = new RegExp(String.raw`규격\s*추가\s*혁신제품[^\d가-힣\n]{0,3}\s*${COUNT}\s*${UNIT}`);
   for (const line of lines) {
     const m = line.match(pattern);
     if (m) return toCell(m[1]);
@@ -123,6 +140,21 @@ export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
     const spec = readSpecAddition(lines);
     if (spec) {
       results.push({ fileName, ministry, category: "규격추가", count: spec });
+    }
+    // 연장·신규지정 문서가 아니면 지정취소 문서인지 확인한다.
+    if (results.length === 0) {
+      const cancellation = readCancellation(lines);
+      if (cancellation) {
+        results.push({
+          fileName,
+          ministry,
+          category: "지정취소",
+          count: cancellation.count,
+          problem: cancellation.missing
+            ? "지정취소 문서인데 '지정취소 N건' 건수 문구를 찾지 못했어요."
+            : undefined,
+        });
+      }
     }
   }
 
