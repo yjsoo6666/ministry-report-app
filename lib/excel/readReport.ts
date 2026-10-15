@@ -3,7 +3,16 @@
 // (예시 기준표처럼 왼쪽·위에 빈 칸이 있어도 읽는다.)
 
 import ExcelJS from "exceljs";
-import { toShortMinistryName } from "../parse/ministryNames";
+import JSZip from "jszip";
+import {
+  MAX_REPORT_ROWS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_MB,
+  MAX_XLSX_TOTAL_BYTES,
+  MAX_ZIP_ENTRIES,
+} from "../limits";
+import { isSafeMinistryName, toShortMinistryName } from "../parse/ministryNames";
+import { assertEntryCount, assertTotalSize, ZipGuardError } from "../reader/zipGuard";
 import { CATEGORIES, CATEGORY_LABELS, type Category, type Cell, type PreviousReport } from "../types";
 
 export class ReportReadError extends Error {}
@@ -37,6 +46,20 @@ function toCell(cell: ExcelJS.Cell): Cell {
 
 // 지난 분기 기준표 엑셀(바이트)을 읽어 부처별 숫자를 돌려준다.
 export async function readReport(data: ArrayBuffer | Uint8Array): Promise<PreviousReport> {
+  if (data.byteLength > MAX_UPLOAD_BYTES) {
+    throw new ReportReadError(`파일이 너무 커요. ${MAX_UPLOAD_MB}MB 이하만 올릴 수 있어요.`);
+  }
+
+  // 보안: 엑셀 도구로 열기 전에, 풀었을 때 엄청나게 커지는 "압축 폭탄"인지 먼저 확인한다.
+  try {
+    const zip = await JSZip.loadAsync(data);
+    assertEntryCount(zip, MAX_ZIP_ENTRIES);
+    assertTotalSize(zip, MAX_XLSX_TOTAL_BYTES);
+  } catch (error) {
+    if (error instanceof ZipGuardError) throw new ReportReadError(error.message);
+    throw new ReportReadError("엑셀 파일을 열 수 없어요. 손상되었거나 .xlsx 파일이 아니에요.");
+  }
+
   const workbook = new ExcelJS.Workbook();
   try {
     await workbook.xlsx.load(data as ArrayBuffer);
@@ -46,6 +69,9 @@ export async function readReport(data: ArrayBuffer | Uint8Array): Promise<Previo
 
   const sheet = workbook.worksheets[0];
   if (!sheet) throw new ReportReadError("엑셀 파일에 시트가 없어요.");
+  if (sheet.rowCount > MAX_REPORT_ROWS) {
+    throw new ReportReadError("엑셀 표가 너무 커서 열지 않았어요.");
+  }
 
   // 5개 구분 제목이 모두 있는 줄을 찾는다.
   let headerRow = -1;
@@ -84,7 +110,14 @@ export async function readReport(data: ArrayBuffer | Uint8Array): Promise<Previo
     for (const category of CATEGORIES) {
       cells[category] = toCell(row.getCell(columnOf.get(category)!));
     }
-    rows.push({ ministry: toShortMinistryName(name), cells });
+    // 보안: 부처 이름에 쓸 수 없는 글자(=, +, @ 등)가 있으면 이 표는 비교에 쓰지 않는다.
+    const ministry = toShortMinistryName(name);
+    if (!isSafeMinistryName(ministry)) {
+      throw new ReportReadError(
+        "지난 분기 표의 부처 이름에 쓸 수 없는 글자(=, +, @ 등)가 있어요. 이 앱이 만든 기준표인지 확인해 주세요.",
+      );
+    }
+    rows.push({ ministry, cells });
   }
 
   return { rows };

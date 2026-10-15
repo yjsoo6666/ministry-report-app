@@ -11,7 +11,8 @@ import IssueList from "./_components/IssueList";
 import PreviewTable from "./_components/PreviewTable";
 import PreviousReportInput from "./_components/PreviousReportInput";
 import Summary from "./_components/Summary";
-import { parseFile } from "@/lib/parse/parseFile";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/limits";
+import { parseFile, tooLargeResult } from "@/lib/parse/parseFile";
 import { buildTable } from "@/lib/table/buildTable";
 import { applyEdit } from "@/lib/table/editTable";
 import {
@@ -128,7 +129,11 @@ export default function Home() {
 
     files.forEach(async (file, index) => {
       const id = added[index].id;
-      const results = await parseFile(file.name, await file.arrayBuffer());
+      // 보안: 너무 큰 파일은 메모리에 올리기 전에 크기만 보고 거절한다.
+      const results =
+        file.size > MAX_UPLOAD_BYTES
+          ? tooLargeResult(file.name)
+          : await parseFile(file.name, await file.arrayBuffer());
       setEntries((prev) =>
         prev.map((e) => (e.id === id ? { ...e, status: "done", results } : e)),
       );
@@ -144,6 +149,16 @@ export default function Home() {
   // 지난 분기 기준표를 읽는다. 엑셀 도구는 용량이 커서 이때 처음 불러온다.
   async function selectPrevious(file: File) {
     setPreviousError("");
+    if (!/\.xlsx$/i.test(file.name)) {
+      setPrevious(null);
+      setPreviousError("엑셀 파일(.xlsx)만 올릴 수 있어요.");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setPrevious(null);
+      setPreviousError(`파일이 너무 커요. ${MAX_UPLOAD_MB}MB 이하만 올릴 수 있어요.`);
+      return;
+    }
     try {
       const { readReport } = await import("@/lib/excel/readReport");
       const report = await readReport(await file.arrayBuffer());

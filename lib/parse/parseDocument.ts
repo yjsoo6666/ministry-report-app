@@ -3,7 +3,7 @@
 // 주의: 아래 문구 규칙은 사진 속 문서를 근거로 한 것이다. 실제 부처 파일로 확인하며 다듬는다.
 
 import type { Category, Cell, ParsedFile } from "../types";
-import { toShortMinistryName } from "./ministryNames";
+import { isSafeMinistryName, toShortMinistryName } from "./ministryNames";
 
 // 숫자 자리: 숫자 → 읽은 숫자, "-" 또는 비어 있음 → 없음, 그 밖의 글자 → 읽지 못함
 const DASH = /^[-–—−]$/;
@@ -22,18 +22,30 @@ const COUNT = String.raw`([^\s()（）]{0,4})?`;
 // ① 부처명: 문서 맨 위 제목에서 읽는다.
 //   - "[해양수산부]혁신제품 지정 2차 연장 검토" → 대괄호 안
 //   - "해양수산부" 처럼 제목이 부처 이름뿐인 경우 → 그 줄
-function readMinistry(lines: string[]): string | null {
+// - 읽은 이름에 허용되지 않는 글자(=, +, @ 등)가 있으면 부처명으로 받아들이지 않고 rejected에 이유를 남긴다.
+function readMinistry(lines: string[]): { name: string | null; rejected: boolean } {
   const head = lines.slice(0, 5);
+  let candidate: string | null = null;
+
   for (const line of head) {
-    const bracket = line.match(/^[\[［【]\s*([^\]］】]+?)\s*[\]］】]/);
-    if (bracket) return toShortMinistryName(bracket[1]);
-  }
-  for (const line of head) {
-    if (/^[가-힣\s]{2,15}(부|처|청|원|위원회|실)$/.test(line)) {
-      return toShortMinistryName(line);
+    const bracket = line.match(/^[\[［【]\s*([^\]］】]{1,60}?)\s*[\]］】]/);
+    if (bracket) {
+      candidate = toShortMinistryName(bracket[1]);
+      break;
     }
   }
-  return null;
+  if (candidate === null) {
+    for (const line of head) {
+      if (/^[가-힣\s]{2,15}(부|처|청|원|위원회|실)$/.test(line)) {
+        candidate = toShortMinistryName(line);
+        break;
+      }
+    }
+  }
+
+  if (candidate === null) return { name: null, rejected: false };
+  if (!isSafeMinistryName(candidate)) return { name: null, rejected: true };
+  return { name: candidate, rejected: false };
 }
 
 // ② 연장 문서: 제목의 "1차 연장" / "2차 연장"과 "인정 대상 요약(N개)"에서 읽는다. (접수·미인정은 세지 않는다)
@@ -80,8 +92,11 @@ function readSpecAddition(lines: string[]): Cell | null {
 
 // 문서 하나를 읽어 결과를 돌려준다. 한 문서에서 구분이 여러 개 나오면(예: 신규지정 + 규격추가) 여러 개를 돌려준다.
 export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
-  const ministry = readMinistry(lines);
+  const { name: ministry, rejected } = readMinistry(lines);
   const results: ParsedFile[] = [];
+  const ministryProblem = rejected
+    ? "문서 맨 위의 부처명에 쓸 수 없는 글자(=, +, @ 등)가 있어서 표에 넣지 않았어요."
+    : "문서 맨 위에서 부처명을 찾지 못했어요.";
 
   const extension = readExtension(lines);
   if (extension) {
@@ -120,7 +135,7 @@ export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
 
   if (ministry === null) {
     for (const r of results) {
-      r.problem = r.problem ?? "문서 맨 위에서 부처명을 찾지 못했어요.";
+      r.problem = r.problem ?? ministryProblem;
     }
   }
   return results;
