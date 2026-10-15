@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# 삭제 대기 폴더와 bkit 플러그인 폴더
+/trash-can/
+/.bkit/
+
 # vercel
 .vercel
 
