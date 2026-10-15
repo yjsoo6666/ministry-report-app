@@ -97,18 +97,63 @@ describe("buildTable", () => {
     expect(table.totals.신규지정).toEqual(num(1));
   });
 
-  it("같은 부처·같은 구분 파일이 둘 이상이면 합치지 않고 '확인 필요'로 두고 이유를 남긴다", () => {
+  it("같은 부처·같은 구분의 서로 다른 파일(유형1, 유형2)은 숫자를 더하고 확인할 것이 없다", () => {
+    const { table, issues } = buildTable([
+      file("1-1. (조달청) 지정(안)(유형1).hwpx", "조달청", "신규지정", num(80)),
+      file("1-2. (조달청) 지정(안)(유형2).hwpx", "조달청", "신규지정", num(12)),
+    ]);
+    expect(table.rows).toHaveLength(1);
+    expect(table.rows[0].cells.신규지정).toEqual(num(92));
+    expect(table.totals.신규지정).toEqual(num(92));
+    expect(issues).toEqual([]);
+  });
+
+  it("같은 구분 파일 3개도 더하고, 하나가 빈칸이면 나머지 숫자만 더한다", () => {
+    const { table } = buildTable([
+      file("a.hwpx", "해수부", "규격추가", num(2)),
+      file("b.hwpx", "해수부", "규격추가", EMPTY),
+      file("c.hwpx", "해수부", "규격추가", num(3)),
+    ]);
+    expect(table.rows[0].cells.규격추가).toEqual(num(5));
+  });
+
+  it("같은 구분 파일이 모두 빈칸이면 빈칸이고, 하나라도 '확인 필요'면 합도 '확인 필요'다", () => {
+    const allEmpty = buildTable([
+      file("a.hwpx", "해수부", "규격추가", EMPTY),
+      file("b.hwpx", "해수부", "규격추가", EMPTY),
+    ]);
+    expect(allEmpty.table.rows[0].cells.규격추가).toEqual(EMPTY);
+
+    const withCheck = buildTable([
+      file("a.hwpx", "해수부", "규격추가", num(2)),
+      { ...file("b.hwpx", "해수부", "규격추가", CHECK), problem: "숫자를 읽지 못했어요." },
+    ]);
+    expect(withCheck.table.rows[0].cells.규격추가).toEqual(CHECK);
+    expect(withCheck.table.totals.규격추가).toEqual(CHECK);
+    expect(withCheck.issues).toHaveLength(1);
+    expect(withCheck.issues[0].fileNames).toEqual(["b.hwpx"]);
+  });
+
+  it("같은 파일을 복사해서 올린 것(결과.hwpx와 결과(1).hwpx, 숫자 같음)은 한 번만 세고 이유를 남긴다", () => {
     const { table, issues } = buildTable([
       file("결과.hwpx", "해수부", "2차연장", num(1)),
       file("결과(1).hwpx", "해수부", "2차연장", num(1)),
     ]);
-    expect(table.rows[0].cells["2차연장"]).toEqual(CHECK);
-    expect(table.totals["2차연장"]).toEqual(CHECK);
+    expect(table.rows[0].cells["2차연장"]).toEqual(num(1));
+    expect(table.totals["2차연장"]).toEqual(num(1));
     expect(issues).toHaveLength(1);
-    expect(issues[0].fileNames).toEqual(["결과.hwpx", "결과(1).hwpx"]);
+    expect(issues[0].fileNames).toEqual(["결과(1).hwpx"]);
     expect(issues[0].cell).toEqual({ ministry: "해수부", category: "2차연장" });
-    expect(issues[0].message).toContain("해수부");
-    expect(issues[0].message).toContain("2차연장");
+    expect(issues[0].message).toContain("복사");
+  });
+
+  it("이름이 복사본 모양이어도 숫자가 다르면 다른 문서로 보고 더한다", () => {
+    const { table, issues } = buildTable([
+      file("결과.hwpx", "해수부", "2차연장", num(1)),
+      file("결과(1).hwpx", "해수부", "2차연장", num(4)),
+    ]);
+    expect(table.rows[0].cells["2차연장"]).toEqual(num(5));
+    expect(issues).toEqual([]);
   });
 
   it("숫자를 못 읽어 '확인 필요'가 된 칸은 이유를 확인 목록에도 남긴다", () => {

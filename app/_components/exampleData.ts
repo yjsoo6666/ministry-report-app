@@ -30,7 +30,7 @@ export const EXAMPLE_FILES: ParsedFile[] = [
   file("예시6부", "2차연장", { kind: "check" }, "건수 문구는 있는데 숫자를 읽지 못했어요."),
   file("예시6부", "1차연장", num(2)),
   file("예시7청", "신규지정", num(1)),
-  // 같은 부처·같은 구분 파일이 둘 → "확인 필요" + 확인 목록
+  // 같은 파일을 복사해서 올린 경우 → 한 번만 세고 확인 목록에 알림
   {
     fileName: "예시8부_신규지정.hwpx",
     ministry: "예시8부",

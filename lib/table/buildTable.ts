@@ -1,5 +1,6 @@
 // Design Ref: §5 ③ 합치기 — 파일별 결과를 부처×구분 표로 합치고 맨 아래 "계" 행을 만든다.
-// Plan SC: 작업 6번. 숫자 100% 일치가 목표라서 임의로 고르거나 더하지 않고, 애매하면 "확인 필요"로 둔다.
+// Plan SC: 작업 6번. 숫자 100% 일치가 목표라서 문서에 적힌 숫자만 쓰고, 읽지 못했으면 "확인 필요"로 둔다.
+// 같은 구분 파일이 여러 개면(유형1, 유형2 등) 숫자를 더한다.
 
 import {
   CATEGORIES,
@@ -22,7 +23,7 @@ export interface BuildResult {
   table: Table;
   // 부처명 또는 구분을 못 읽어서 표에 넣지 않은 파일 (확인 목록에 보여준다)
   excluded: ParsedFile[];
-  // 표에는 넣었지만 확인이 필요한 문제 (예: 같은 부처·구분 파일이 둘 이상)
+  // 표에는 넣었지만 확인이 필요한 문제 (예: 숫자를 못 읽음, 같은 파일을 복사해서 올림)
   issues: BuildIssue[];
 }
 
@@ -55,9 +56,37 @@ export function computeTotals(rows: TableRow[]): Record<Category, Cell> {
   return totals;
 }
 
+// 같은 구분 파일 여러 개의 칸 값을 더한다. (예: 신규지정 유형1 80건 + 유형2 12건 = 92건)
+// - 숫자만 있으면 합, 하나라도 "확인 필요"면 "확인 필요", 숫자가 하나도 없으면 빈칸이다.
+function sumCells(cells: Cell[]): Cell {
+  if (cells.some((c) => c.kind === "check")) return { kind: "check" };
+  const numbers = cells.filter((c): c is Extract<Cell, { kind: "number" }> => c.kind === "number");
+  if (numbers.length === 0) return { kind: "empty" };
+  return { kind: "number", value: numbers.reduce((sum, c) => sum + c.value, 0) };
+}
+
+// 파일 이름 끝의 복사본 표시를 뗀 이름. 예: "결과(1).hwpx", "결과 (2).hwpx" → "결과.hwpx"
+function withoutCopyMark(fileName: string): string {
+  return fileName.replace(/\s?\(\d+\)(\.[^.]*)?$/, "$1");
+}
+
+// 같은 그룹의 다른 파일을 복사한 파일인가? (이름이 복사본 모양이고, 원본 이름과 숫자가 같을 때만)
+function isCopyOfAnother(file: ParsedFile, group: ParsedFile[]): boolean {
+  const base = withoutCopyMark(file.fileName);
+  if (base === file.fileName) return false;
+  return group.some(
+    (other) =>
+      other !== file &&
+      other.fileName === base &&
+      other.count.kind === file.count.kind &&
+      (other.count.kind !== "number" ||
+        (file.count.kind === "number" && other.count.value === file.count.value)),
+  );
+}
+
 // 파일별 읽은 결과를 부처별·구분별 표로 합친다.
 // - 부처 행은 파일을 올린 순서(처음 나온 순서)대로 둔다. 같은 이름의 부처는 한 행으로 합친다.
-// - 같은 부처·같은 구분의 파일이 둘 이상이면 합치지 않고 "확인 필요"로 두고 이유를 issues에 적는다.
+// - 같은 부처·같은 구분의 파일이 둘 이상이면(예: 유형1, 유형2) 숫자를 더한다. 복사해서 다시 올린 파일은 한 번만 센다.
 // - 파일이 없는 칸은 빈칸이다.
 export function buildTable(files: ParsedFile[]): BuildResult {
   const excluded: ParsedFile[] = [];
@@ -106,12 +135,27 @@ export function buildTable(files: ParsedFile[]): BuildResult {
         });
       }
     } else {
-      row.cells[category] = { kind: "check" };
-      issues.push({
-        fileNames: group.map((f) => f.fileName),
-        message: `${ministry}의 ${category} 파일이 ${group.length}개 올라와서 확인이 필요해요. 하나만 남겨 주세요.`,
-        cell: { ministry, category },
-      });
+      // 같은 파일을 복사해서 다시 올린 것(예: 결과.hwpx와 결과(1).hwpx, 숫자도 같음)은 한 번만 센다.
+      const copies = group.filter((f) => isCopyOfAnother(f, group));
+      const counted = group.filter((f) => !copies.includes(f));
+      if (copies.length > 0) {
+        issues.push({
+          fileNames: copies.map((f) => f.fileName),
+          message: `${ministry}의 ${category}에 같은 파일을 복사해서 올린 것 같아 한 번만 셌어요. 서로 다른 문서라면 하나를 빼고 다시 올려 주세요.`,
+          cell: { ministry, category },
+        });
+      }
+      // 서로 다른 파일(예: 유형1, 유형2)은 숫자를 더한다.
+      row.cells[category] = sumCells(counted.map((f) => f.count));
+      for (const f of counted) {
+        if (f.count.kind === "check" || (f.count.kind === "empty" && f.problem)) {
+          issues.push({
+            fileNames: [f.fileName],
+            message: f.problem ?? `${ministry}의 ${category} 칸의 숫자를 읽지 못했어요.`,
+            cell: { ministry, category },
+          });
+        }
+      }
     }
   }
 
