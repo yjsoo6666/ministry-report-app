@@ -14,6 +14,8 @@ import {
 export interface BuildIssue {
   fileNames: string[];
   message: string;
+  // 이 문제가 걸려 있는 표의 칸. 담당자가 그 칸을 고치면 해결된 것으로 본다.
+  cell: { ministry: string; category: Category };
 }
 
 export interface BuildResult {
@@ -92,12 +94,22 @@ export function buildTable(files: ParsedFile[]): BuildResult {
     if (!row) continue;
 
     if (group.length === 1) {
-      row.cells[category] = group[0].count;
+      const only = group[0];
+      row.cells[category] = only.count;
+      // 숫자를 읽지 못해 "확인 필요"가 된 칸은 이유를 확인 목록에도 남긴다.
+      if (only.count.kind === "check") {
+        issues.push({
+          fileNames: [only.fileName],
+          message: only.problem ?? `${ministry}의 ${category} 칸의 숫자를 읽지 못했어요.`,
+          cell: { ministry, category },
+        });
+      }
     } else {
       row.cells[category] = { kind: "check" };
       issues.push({
         fileNames: group.map((f) => f.fileName),
         message: `${ministry}의 ${category} 파일이 ${group.length}개 올라와서 확인이 필요해요. 하나만 남겨 주세요.`,
+        cell: { ministry, category },
       });
     }
   }

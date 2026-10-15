@@ -106,8 +106,26 @@ describe("buildTable", () => {
     expect(table.totals["2차연장"]).toEqual(CHECK);
     expect(issues).toHaveLength(1);
     expect(issues[0].fileNames).toEqual(["결과.hwpx", "결과(1).hwpx"]);
+    expect(issues[0].cell).toEqual({ ministry: "해수부", category: "2차연장" });
     expect(issues[0].message).toContain("해수부");
     expect(issues[0].message).toContain("2차연장");
+  });
+
+  it("숫자를 못 읽어 '확인 필요'가 된 칸은 이유를 확인 목록에도 남긴다", () => {
+    const withReason: ParsedFile = {
+      ...file("a.hwpx", "행안부", "2차연장", CHECK),
+      problem: "건수 문구는 있는데 숫자를 읽지 못했어요.",
+    };
+    const withoutReason = file("b.hwpx", "해수부", "신규지정", CHECK);
+    const { issues } = buildTable([withReason, withoutReason]);
+    expect(issues).toHaveLength(2);
+    expect(issues[0]).toEqual({
+      fileNames: ["a.hwpx"],
+      message: "건수 문구는 있는데 숫자를 읽지 못했어요.",
+      cell: { ministry: "행안부", category: "2차연장" },
+    });
+    expect(issues[1].fileNames).toEqual(["b.hwpx"]);
+    expect(issues[1].message).toContain("해수부");
   });
 
   it("부처명이나 구분을 못 읽은 파일은 표에 넣지 않고 제외 목록에 둔다", () => {
