@@ -23,8 +23,13 @@ function writeCell(cell: ExcelJS.Cell, value: Cell, bold = false, fill?: string)
 // 표를 기준표 엑셀 파일(바이트)로 만든다.
 export async function writeReport(table: Table): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("기준표");
+  fillReportSheet(workbook.addWorksheet("기준표"), table);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer as ArrayBuffer);
+}
 
+// 표를 엑셀 시트 하나에 쓴다. (기준표 파일과, 비교표와 함께 담는 파일이 같이 쓴다)
+export function fillReportSheet(sheet: ExcelJS.Worksheet, table: Table) {
   // 머리글 줄: 빈 모서리 칸 + 구분 5개
   const header = sheet.getRow(1);
   styleCell(header.getCell(1), { bold: true, fill: HEADER_FILL });
@@ -55,7 +60,4 @@ export async function writeReport(table: Table): Promise<Uint8Array> {
   });
 
   setColumnWidths(sheet, CATEGORIES.length);
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return new Uint8Array(buffer as ArrayBuffer);
 }

@@ -192,13 +192,10 @@ my-app/
 │  ├─ page.tsx             # 화면 한 페이지 (상태 관리와 배치만)
 │  ├─ layout.tsx           # 공통 틀 (제목·한국어 설정)
 │  └─ _components/         # 화면 조각들
-│     ├─ FileDropzone.tsx      # ② 올리기
-│     ├─ PreviousReportInput.tsx # (선택) 지난 차수 표 올리기
-│     ├─ exampleData.ts        # 파일이 없을 때 화면을 보는 예시 (임시)
-│     ├─ Summary.tsx           # ③ 요약
-│     ├─ PreviewTable.tsx      # ④ 미리보기·수정
-│     ├─ IssueList.tsx         # ⑤ 확인 목록
-│     └─ DownloadButtons.tsx   # ⑥ 내려받기
+│     ├─ StepUpload.tsx        # 1단계 올리기 (+ 지난 차수 표)
+│     ├─ StepReview.tsx        # 2단계 확인 카드 + 미리보기
+│     ├─ PreviewTable.tsx      # 미리보기·수정 표
+│     └─ StepResult.tsx        # 3단계 완성·비교·내려받기
 ├─ lib/                    # 화면과 상관없는 계산 (따로 시험 가능)
 │  ├─ types.ts             # 6장의 데이터 모양
 │  ├─ reader/              # 글자 꺼내기

@@ -26,8 +26,17 @@ export async function writeComparison(
   currentLabel = "이번 차수",
 ): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("비교표");
+  fillComparisonSheet(workbook.addWorksheet("비교표"), comparison, currentLabel);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Uint8Array(buffer as ArrayBuffer);
+}
 
+// 비교표를 엑셀 시트 하나에 쓴다. (비교표 파일과, 기준표와 함께 담는 파일이 같이 쓴다)
+export function fillComparisonSheet(
+  sheet: ExcelJS.Worksheet,
+  comparison: ComparisonTable,
+  currentLabel = "이번 차수",
+) {
   const header = sheet.getRow(1);
   styleCell(header.getCell(1), { bold: true, fill: HEADER_FILL });
   CATEGORIES.forEach((category, i) => {
@@ -56,7 +65,4 @@ export async function writeComparison(
 
   // 부처 이름에 "(4차 없음)" 같은 표시가 붙을 수 있어 첫 열을 조금 더 넓게 둔다.
   setColumnWidths(sheet, CATEGORIES.length, 22);
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  return new Uint8Array(buffer as ArrayBuffer);
 }
