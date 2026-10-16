@@ -35,5 +35,7 @@ describe("확인용 예시 파일 2개", () => {
     const missing = issues.find((i) => i.cell.ministry === "산업부")!;
     expect(missing.cell.category).toBe("지정취소");
     expect(missing.message).toContain("건수 문구를 찾지 못했어요");
+    // 문서 속 번호 목록(1~3)을 세어 3건을 제안하지만, 칸에는 자동으로 넣지 않는다.
+    expect(missing.suggestion?.value).toBe(3);
   });
 });

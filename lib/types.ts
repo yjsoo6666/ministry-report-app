@@ -40,6 +40,9 @@ export interface ParsedFile {
   count: Cell;
   // 사용자에게 보여줄 문제 설명 (한국어)
   problem?: string;
+  // 건수 문구를 못 읽었을 때, 문서의 번호 목록(1, 2, 3 …)을 세어 본 값. 칸에 자동으로 넣지 않고
+  // 담당자에게 "맞나요?"라고 제안하는 용도로만 쓴다.
+  suggestion?: { value: number; reason: string };
 }
 
 // 합친 표의 한 줄 (부처 하나).

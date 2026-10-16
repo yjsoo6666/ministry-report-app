@@ -321,7 +321,7 @@ export interface CheckSampleFile {
 // 1) 국토교통부 신규지정 문서를 그대로 복사한 것 — 이름 끝에 "(1)"이 붙고 숫자는 같다.
 //    앱은 한 번만 세고 "복사해서 올린 것 같아요" 알림을 띄운다.
 // 2) 산업통상부 지정취소 문서인데 "지정취소 N건" 건수 문구가 없는 것 — 칸은 빈칸으로 남고
-//    "건수 문구를 찾지 못했어요" 알림이 뜬다. (예시 40개에서 산업부 지정취소는 원래 빈칸이다)
+//    "건수 문구를 찾지 못했어요" 알림이 뜨고, 번호 목록(1~3)을 세어 "3건이 맞나요?"라고 제안한다. (예시 40개에서 산업부 지정취소는 원래 빈칸이다)
 export function checkSampleFiles(): CheckSampleFile[] {
   const original = partialSampleFiles({ media: true }).find(
     (f) => f.ministry === "국토교통부" && f.category === "신규지정",
@@ -342,6 +342,8 @@ export function checkSampleFiles(): CheckSampleFile[] {
         table([
           ["No.", "부처", "사진", "업체명", "혁신명", "취소사유"],
           [1, full, "", "예시업체 1", "예시 혁신제품 1", "예시 취소 사유"],
+          [2, full, "", "예시업체 2", "예시 혁신제품 2", "예시 취소 사유"],
+          [3, full, "", "예시업체 3", "예시 혁신제품 3", "예시 취소 사유"],
         ]),
       ],
       mediaBytes: 0,

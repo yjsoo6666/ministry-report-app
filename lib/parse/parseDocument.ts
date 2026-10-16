@@ -125,6 +125,50 @@ function readSpecAddition(lines: string[]): Cell | null {
   return found;
 }
 
+// 번호 목록(1, 2, 3 …)을 세어 건수를 제안한다. (건수 문구를 못 읽었을 때만 쓰고, 칸에 자동으로 넣지는 않는다)
+// - 줄 하나가 숫자만 있는 것을 번호로 보고, 1부터 차례로 이어지는 묶음을 한 목록으로 센다.
+// - 목록이 정확히 하나일 때만 제안한다. 여러 개면 어느 것이 맞는지 알 수 없어서 제안하지 않는다.
+export function countNumberedItems(lines: string[]): number | null {
+  const lists: number[] = [];
+  let expected = 1;
+  for (const line of lines) {
+    if (!/^\d{1,4}$/.test(line.trim())) continue;
+    const n = Number(line.trim());
+    if (n === expected) {
+      expected++;
+    } else if (n === 1) {
+      if (expected > 1) lists.push(expected - 1);
+      expected = 2;
+    }
+  }
+  if (expected > 1) lists.push(expected - 1);
+  return lists.length === 1 ? lists[0] : null;
+}
+
+// 연장 문서는 "인정 대상 세부 현황" 부분만, 그 밖의 문서는 문서 전체의 번호 목록을 센다.
+function suggestionFor(category: Category, lines: string[]): ParsedFile["suggestion"] {
+  let scope = lines;
+  if (category === "1차연장" || category === "2차연장") {
+    const start = lines.findIndex((line) => /(?<!미)인정\s*대상\s*세부/.test(line));
+    if (start < 0) return undefined;
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex((line) => /^\d\.\s|미인정/.test(line));
+    scope = end < 0 ? rest : rest.slice(0, end);
+  }
+  const value = countNumberedItems(scope);
+  return value === null
+    ? undefined
+    : { value, reason: `문서의 번호 목록(${value === 1 ? "1" : `1~${value}`})을 세어 봤어요.` };
+}
+
+// 건수를 못 읽은 결과에는 번호 목록을 센 제안을 붙인다.
+function withSuggestion(result: ParsedFile, lines: string[]): ParsedFile {
+  const unread = result.count.kind === "check" || (result.count.kind === "empty" && result.problem);
+  if (!unread || result.category === null) return result;
+  const suggestion = suggestionFor(result.category, lines);
+  return suggestion ? { ...result, suggestion } : result;
+}
+
 // 문서 하나를 읽어 결과를 돌려준다. 한 문서에서 구분이 여러 개 나오면(예: 신규지정 + 규격추가) 여러 개를 돌려준다.
 export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
   const { name: ministry, rejected } = readMinistry(lines);
@@ -189,7 +233,7 @@ export function parseDocument(fileName: string, lines: string[]): ParsedFile[] {
       r.problem = r.problem ?? ministryProblem;
     }
   }
-  return results;
+  return results.map((r) => withSuggestion(r, lines));
 }
 
 function hasApprovedPhrase(lines: string[]): boolean {

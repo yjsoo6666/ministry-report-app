@@ -17,6 +17,8 @@ export interface BuildIssue {
   message: string;
   // 이 문제가 걸려 있는 표의 칸. 담당자가 그 칸을 고치면 해결된 것으로 본다.
   cell: { ministry: string; category: Category };
+  // 문서의 번호 목록을 세어 본 건수 제안. 칸에 자동으로 넣지 않고 담당자가 맞는지 확인한다.
+  suggestion?: { value: number; reason: string };
 }
 
 export interface BuildResult {
@@ -132,6 +134,7 @@ export function buildTable(files: ParsedFile[]): BuildResult {
           fileNames: [only.fileName],
           message: only.problem ?? `${ministry}의 ${category} 칸의 숫자를 읽지 못했어요.`,
           cell: { ministry, category },
+          suggestion: only.suggestion,
         });
       }
     } else {

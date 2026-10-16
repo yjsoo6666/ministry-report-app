@@ -253,7 +253,7 @@ export default function Home() {
         save(await writeReport(table), reportFileName);
       } else if (comparison) {
         const { writeComparison } = await import("@/lib/excel/writeComparison");
-        save(await writeComparison(comparison, labels.current), comparisonFileName);
+        save(await writeComparison(comparison, labels.current, labels.previous), comparisonFileName);
       }
     } catch {
       setDownloadError("엑셀 파일을 만들지 못했어요. 다시 시도해 주세요.");

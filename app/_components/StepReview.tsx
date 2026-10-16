@@ -42,8 +42,12 @@ function IssueCard({
 }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
+  // 제안이 있으면 처음에는 "N건 맞아요" 버튼만 보이고, "직접 적을게요"를 눌러야 입력 칸이 나온다.
+  const [typing, setTyping] = useState(false);
   const { ministry, category } = issue.cell;
   const isCheck = cellKind === "check";
+  const suggestion = issue.suggestion;
+  const showInput = !suggestion || typing;
 
   function apply() {
     const cell = parseCellInput(text);
@@ -61,26 +65,56 @@ function IssueCard({
       </p>
       <p className="mt-0.5 font-bold leading-snug">{issue.message}</p>
       <p className="mt-0.5 truncate text-xs text-zinc-500">{issue.fileNames.join(", ")}</p>
+      {suggestion && cellKind !== "number" && (
+        <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-zinc-900">
+          {suggestion.reason} <strong>{suggestion.value}건</strong>이 맞나요?
+        </p>
+      )}
 
       {cellKind !== "number" ? (
         <div className="mt-3 flex flex-col gap-2">
-          <div className="flex gap-2">
-            <input
-              inputMode="numeric"
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                setError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && apply()}
-              placeholder="문서에 적힌 건수"
-              aria-label={`${ministry} ${CATEGORY_LABELS[category]} 건수 입력`}
-              className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-            />
-            <button type="button" onClick={apply} className={BTN}>
-              이 숫자로 할게요
-            </button>
-          </div>
+          {suggestion && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTyping((v) => !v)}
+                className={`${BTN} flex-1`}
+              >
+                직접 적을게요
+              </button>
+              <button
+                type="button"
+                onClick={() => onSetCell(ministry, category, { kind: "number", value: suggestion.value })}
+                className="flex-1 rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900"
+              >
+                {suggestion.value}건 맞아요
+              </button>
+            </div>
+          )}
+          {showInput && (
+            <div className="flex gap-2">
+              <input
+                inputMode="numeric"
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && text.trim() !== "" && apply()}
+                placeholder="문서에 적힌 건수"
+                aria-label={`${ministry} ${CATEGORY_LABELS[category]} 건수 입력`}
+                className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+              />
+              <button
+                type="button"
+                onClick={apply}
+                disabled={text.trim() === ""}
+                className={`${BTN} disabled:cursor-not-allowed disabled:opacity-40`}
+              >
+                이 숫자로 할게요
+              </button>
+            </div>
+          )}
           <button
             type="button"
             onClick={() =>
