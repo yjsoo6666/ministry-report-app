@@ -307,3 +307,45 @@ export function totalsOf(files: SampleFile[]): Record<Category, number> {
   for (const file of files) totals[file.category] += file.count;
   return totals;
 }
+
+// ── 확인용 파일 2개 (예시 40개와 함께 올려서 2단계 확인 카드를 보는 용도) ────────────
+
+export interface CheckSampleFile {
+  fileName: string;
+  body: string[];
+  mediaBytes: number;
+  // 이 파일이 만들어야 하는 상황 설명
+  expect: string;
+}
+
+// 1) 국토교통부 신규지정 문서를 그대로 복사한 것 — 이름 끝에 "(1)"이 붙고 숫자는 같다.
+//    앱은 한 번만 세고 "복사해서 올린 것 같아요" 알림을 띄운다.
+// 2) 산업통상부 지정취소 문서인데 "지정취소 N건" 건수 문구가 없는 것 — 칸은 빈칸으로 남고
+//    "건수 문구를 찾지 못했어요" 알림이 뜬다. (예시 40개에서 산업부 지정취소는 원래 빈칸이다)
+export function checkSampleFiles(): CheckSampleFile[] {
+  const original = partialSampleFiles({ media: true }).find(
+    (f) => f.ministry === "국토교통부" && f.category === "신규지정",
+  )!;
+  const full = SAMPLE_MINISTRIES.find((m) => m.short === "산업부")!.full;
+  return [
+    {
+      fileName: original.fileName.replace(/\.hwpx$/, "(1).hwpx"),
+      body: original.body,
+      mediaBytes: original.mediaBytes,
+      expect: "복사본 — 한 번만 세고 알림",
+    },
+    {
+      fileName: `${CATEGORY_NUMBER["지정취소"]}-1. (${full}) '26년도 혁신제품 지정취소(안).hwpx`,
+      body: [
+        para(full),
+        para("혁신제품 지정취소(안)"),
+        table([
+          ["No.", "부처", "사진", "업체명", "혁신명", "취소사유"],
+          [1, full, "", "예시업체 1", "예시 혁신제품 1", "예시 취소 사유"],
+        ]),
+      ],
+      mediaBytes: 0,
+      expect: "건수 문구 없음 — 빈칸으로 두고 알림",
+    },
+  ];
+}
