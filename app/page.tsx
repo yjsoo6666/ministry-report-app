@@ -243,14 +243,18 @@ export default function Home() {
     setStep(3);
   }
 
-  async function download() {
+  async function download(kind: "report" | "comparison") {
     setBusy(true);
     setDownloadError("");
     try {
       // 엑셀 도구는 용량이 커서 버튼을 눌렀을 때만 불러온다.
-      const { writeWorkbook } = await import("@/lib/excel/writeWorkbook");
-      const prefix = labels.named ? `${labels.current} ` : "";
-      save(await writeWorkbook(table, comparison, labels), `${prefix}기준표.xlsx`);
+      if (kind === "report") {
+        const { writeReport } = await import("@/lib/excel/writeReport");
+        save(await writeReport(table), reportFileName);
+      } else if (comparison) {
+        const { writeComparison } = await import("@/lib/excel/writeComparison");
+        save(await writeComparison(comparison, labels.current), comparisonFileName);
+      }
     } catch {
       setDownloadError("엑셀 파일을 만들지 못했어요. 다시 시도해 주세요.");
     } finally {
@@ -258,7 +262,9 @@ export default function Home() {
     }
   }
 
-  const fileName = `${labels.named ? `${labels.current} ` : ""}기준표.xlsx`;
+  const prefix = labels.named ? `${labels.current} ` : "";
+  const reportFileName = `${prefix}기준표.xlsx`;
+  const comparisonFileName = `${prefix}비교표.xlsx`;
 
   return (
     <div className="flex flex-1 justify-center bg-zinc-100 font-sans text-zinc-900 dark:bg-black dark:text-zinc-50">
@@ -320,7 +326,8 @@ export default function Home() {
               table={table}
               comparison={comparison}
               labels={labels}
-              fileName={fileName}
+              reportFileName={reportFileName}
+              comparisonFileName={comparisonFileName}
               unmatched={unmatched}
               renames={renames}
               onRename={(current, old) => setRenames((prev) => ({ ...prev, [current]: old }))}

@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import ExcelJS from "exceljs";
-import { writeWorkbook } from "../lib/excel/writeWorkbook";
 import { compareTables } from "../lib/table/compareTables";
 import { applyRenames, findUnmatched } from "../lib/table/matchMinistries";
 import { buildTable } from "../lib/table/buildTable";
-import { roundLabels } from "../lib/table/roundLabels";
 import type { Cell, ParsedFile, PreviousReport } from "../lib/types";
 
 const num = (value: number): Cell => ({ kind: "number", value });
@@ -46,22 +43,5 @@ describe("부처 이름 짝 맞추기", () => {
       ["산림청", "same"],
       ["환경부", "missing"],
     ]);
-  });
-});
-
-describe("한 파일에 기준표와 비교표 시트 담기", () => {
-  it("지난 표가 있으면 시트 2개, 없으면 기준표 시트 1개다", async () => {
-    const { table } = buildTable(files);
-    const labels = roundLabels("4");
-    const withCmp = await writeWorkbook(table, compareTables(table, previous), labels);
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(withCmp as unknown as ArrayBuffer);
-    expect(wb.worksheets.map((s) => s.name)).toEqual(["기준표", "3차 대비 비교표"]);
-    expect(wb.worksheets[0].getRow(2).getCell(2).value).toBe(3);
-
-    const only = await writeWorkbook(table, null, labels);
-    const wb2 = new ExcelJS.Workbook();
-    await wb2.xlsx.load(only as unknown as ArrayBuffer);
-    expect(wb2.worksheets.map((s) => s.name)).toEqual(["기준표"]);
   });
 });

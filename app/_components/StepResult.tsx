@@ -1,6 +1,6 @@
 "use client";
 
-// 3단계: 완성된 표를 보여 주고(지난 차수 표가 있으면 증감도), 엑셀 한 파일로 내려받는다.
+// 3단계: 완성된 표를 보여 주고(지난 차수 표가 있으면 증감도), 기준표와 비교표를 각각 엑셀 파일로 내려받는다.
 // 지난 표와 이름이 안 맞는 부처는 짐작하지 않고 "같은 부처인가요?"라고 담당자에게 묻는다.
 
 import { useState } from "react";
@@ -13,14 +13,15 @@ interface Props {
   table: Table;
   comparison: ComparisonTable | null; // 지난 차수 표를 올렸을 때만
   labels: RoundLabels;
-  fileName: string;
+  reportFileName: string;
+  comparisonFileName: string;
   unmatched: UnmatchedMinistries | null;
   renames: Record<string, string>; // { 이번 이름: 지난 표 이름 }
   onRename: (current: string, previousName: string) => void;
   onUndoRename: (current: string) => void;
   busy: boolean;
   error: string;
-  onDownload: () => void;
+  onDownload: (kind: "report" | "comparison") => void;
   onRestart: () => void;
 }
 
@@ -69,7 +70,8 @@ export default function StepResult({
   table,
   comparison,
   labels,
-  fileName,
+  reportFileName,
+  comparisonFileName,
   unmatched,
   renames,
   onRename,
@@ -131,15 +133,12 @@ export default function StepResult({
           ▦
         </span>
         <div className="min-w-0">
-          <p className="truncate font-semibold">{fileName}</p>
-          <p className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-zinc-600 dark:text-zinc-400">
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-zinc-800">시트 1 · 기준표</span>
-            {hasPrevious && (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-zinc-800">
-                시트 2 · {labels.named ? `${labels.previous} 대비 비교표` : "비교표"}
-              </span>
-            )}
-          </p>
+          <p className="truncate font-semibold">{reportFileName}</p>
+          {hasPrevious && (
+            <p className="mt-0.5 truncate text-sm text-zinc-600 dark:text-zinc-400">
+              {comparisonFileName}
+            </p>
+          )}
         </div>
       </div>
 
@@ -257,12 +256,22 @@ export default function StepResult({
         </button>
         <button
           type="button"
-          onClick={onDownload}
+          onClick={() => onDownload("report")}
           disabled={busy}
-          className="flex-1 rounded-xl bg-slate-900 py-3.5 font-bold text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
+          className="flex-1 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900"
         >
-          {busy ? "만드는 중…" : "엑셀 다운로드"}
+          {busy ? "만드는 중…" : `${labels.named ? `${labels.current} ` : ""}기준표 받기`}
         </button>
+        {hasPrevious && (
+          <button
+            type="button"
+            onClick={() => onDownload("comparison")}
+            disabled={busy}
+            className="flex-1 rounded-xl border-2 border-slate-900 py-3.5 text-sm font-bold text-slate-900 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-100 dark:text-slate-100 dark:hover:bg-zinc-800"
+          >
+            {busy ? "만드는 중…" : `${labels.named ? `${labels.current} ` : ""}비교표 받기`}
+          </button>
+        )}
       </div>
     </div>
   );
